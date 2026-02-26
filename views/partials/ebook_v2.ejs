@@ -1,0 +1,67 @@
+<section class="py-16 bg-white border-t border-gray-100">
+    <div class="max-w-7xl mx-auto px-4">
+        
+        <div class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+            <div class="flex items-center">
+                <div class="bg-blue-600 p-2 rounded-lg mr-3 text-white shadow-md">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+                </div>
+                <h2 class="text-2xl md:text-3xl font-bold text-gray-800">
+                    คลังหนังสืออิเล็กทรอนิกส์ <span class="text-gray-400 font-light ml-1">| E-BOOK</span>
+                </h2>
+            </div>
+            <a href="https://book.pakkretcity.go.th/" target="_blank" class="text-blue-600 font-semibold flex items-center hover:underline bg-blue-50 px-4 py-2 rounded-full transition">
+                เข้าสู่ระบบ E-book <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+            </a>
+        </div>
+
+        <div class="relative bg-[#3d2b1f] rounded-3xl overflow-hidden shadow-2xl border-8 border-[#2d1f16] p-6 md:p-12" 
+             style="background-image: url('https://www.transparenttextures.com/patterns/dark-wood.png'), linear-gradient(to right, #4b3621, #3d2b1f, #4b3621);">
+            
+            <div class="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_50%_-20%,rgba(255,255,200,0.15),transparent_70%)]"></div>
+
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-y-12 gap-x-6 md:gap-x-10 relative z-10">
+                
+                <% 
+                const mockBooks = [
+                    { title: "รายงานประจำปี 2568", img: "https://picsum.photos/400/500?random=60" },
+                    { title: "คู่มือประชาชน 2569", img: "https://picsum.photos/400/500?random=61" },
+                    { title: "แผนพัฒนาท้องถิ่น", img: "https://picsum.photos/400/500?random=62" },
+                    { title: "วารสารเทศบาล", img: "https://picsum.photos/400/500?random=63" },
+                    { title: "ระเบียบจัดซื้อจัดจ้าง", img: "https://picsum.photos/400/500?random=64" }
+                ];
+                %>
+
+                <% mockBooks.forEach(book => { %>
+                <div class="flex flex-col items-center group">
+                    <div class="relative w-full aspect-[3/4.2] mb-0 transform transition-all duration-300 group-hover:-translate-y-4 group-hover:rotate-1 group-hover:scale-105 z-20">
+                        <img src="<%= book.img %>" alt="<%= book.title %>" class="w-full h-full object-cover rounded-sm shadow-[5px_5px_15px_rgba(0,0,0,0.5)] border-l-4 border-black/20">
+                        <div class="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent pointer-events-none"></div>
+                    </div>
+                    
+                    <div class="w-[110%] h-4 bg-[#2a1d15] rounded-sm shadow-[0_10px_10px_rgba(0,0,0,0.5)] border-t border-[#4d3a2b] -mt-1 relative z-10">
+                        <div class="absolute inset-0 bg-gradient-to-b from-transparent to-black/30"></div>
+                    </div>
+
+                    <div class="mt-4 text-center">
+                        <p class="text-amber-100 text-xs md:text-sm font-medium leading-tight line-clamp-2 drop-shadow-md opacity-80 group-hover:opacity-100 transition-opacity">
+                            <%= book.title %>
+                        </p>
+                    </div>
+                </div>
+                <% }) %>
+
+            </div>
+
+            <div class="mt-12 flex justify-center items-center">
+                <div class="inline-flex items-center bg-[#1e293b]/80 backdrop-blur-md rounded-lg p-1 border border-white/10 shadow-xl overflow-hidden">
+                    <button class="px-4 py-2 hover:bg-blue-600 text-white text-xs font-bold transition">◀ Previous</button>
+                    <span class="px-4 py-2 bg-blue-600 text-white text-xs font-bold">1 / 50</span>
+                    <button class="px-4 py-2 hover:bg-blue-600 text-white text-xs font-bold transition">Next ▶</button>
+                </div>
+            </div>
+        </div>
+
+
+    </div>
+</section>

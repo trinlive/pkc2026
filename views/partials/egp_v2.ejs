@@ -1,0 +1,80 @@
+<section class="py-16 bg-slate-50 border-t border-gray-200">
+    <div class="max-w-7xl mx-auto px-4">
+        
+        <div class="flex flex-col md:flex-row justify-between items-end mb-8 gap-4">
+            <div>
+                <h2 class="text-3xl font-bold text-gray-800 flex items-center">
+                    <span class="bg-blue-600 w-2 h-8 mr-3 rounded-full"></span>
+                    ระบบจัดซื้อจัดจ้างภาครัฐ <span class="text-xl text-gray-400 font-normal ml-2 tracking-wide uppercase">| EGP Online</span>
+                </h2>
+                <p class="text-gray-500 mt-2 md:ml-5 text-sm md:text-base">ประกาศจัดซื้อจัดจ้างล่าสุดจากระบบ e-GP กรมบัญชีกลาง</p>
+            </div>
+            <a href="http://www.gprocurement.go.th" target="_blank" class="inline-flex items-center text-sm font-semibold text-blue-600 hover:text-blue-800 transition group whitespace-nowrap bg-white border border-blue-100 px-4 py-2 rounded-full shadow-sm">
+                เข้าสู่ระบบ e-GP 
+                <svg class="w-4 h-4 ml-1 transform group-hover:translate-x-1 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+            </a>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead class="bg-blue-900 text-white">
+                        <tr>
+                            <th class="px-6 py-4 text-sm font-bold uppercase tracking-wider w-24 text-center">วันที่</th>
+                            <th class="px-6 py-4 text-sm font-bold uppercase tracking-wider">ชื่อโครงการ</th>
+                            <th class="px-6 py-4 text-sm font-bold uppercase tracking-wider hidden md:table-cell">วิธีจัดซื้อ</th>
+                            <th class="px-6 py-4 text-sm font-bold uppercase tracking-wider text-center">ดาวน์โหลด</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        <% 
+                        // ข้อมูล Mockup จากรายการจริงในไฟล์ pkc.html
+                        const mockEgp = [
+                            { date: "26 ก.พ. 69", title: "โครงการจ้างก่อสร้างโครงการปรับปรุงถนน คสล.และวางท่อระบายน้ำ บริเวณหลังโรงเรียนวัดกู้", method: "e-bidding", color: "blue" },
+                            { date: "25 ก.พ. 69", title: "โครงการซื้อรถบรรทุก (ดีเซล) ขนาด 1 ตัน จำนวน 4 คัน", method: "e-bidding", color: "blue" },
+                            { date: "24 ก.พ. 69", title: "โครงการซื้อวัสดุสำนักงาน จำนวน 22 รายการ สำหรับศูนย์พัฒนาเด็กเล็ก", method: "เฉพาะเจาะจง", color: "green" },
+                            { date: "23 ก.พ. 69", title: "โครงการจ้างเหมายานพาหนะตามโครงการพัฒนาทักษะเยาวชน กิจกรรม STEM Education Camp", method: "เฉพาะเจาะจง", color: "green" },
+                            { date: "20 ก.พ. 69", title: "โครงการจ้างเหมาซ่อมแซมสถานีสูบน้ำคลองบ้านใหม่ ริมแม่น้ำเจ้าพระยา", method: "เฉพาะเจาะจง", color: "green" }
+                        ];
+                        %>
+
+                        <% mockEgp.forEach(item => { %>
+                        <tr class="hover:bg-blue-50/50 transition-colors group">
+                            <td class="px-6 py-4 text-sm text-gray-500 text-center font-medium whitespace-nowrap">
+                                <%= item.date %>
+                            </td>
+                            <td class="px-6 py-4">
+                                <a href="#" class="text-sm md:text-base text-gray-700 font-semibold group-hover:text-blue-700 transition line-clamp-2 md:line-clamp-1">
+                                    <%= item.title %>
+                                </a>
+                                <span class="md:hidden inline-block mt-1 text-[10px] px-2 py-0.5 rounded bg-gray-100 text-gray-500 uppercase font-bold">
+                                    <%= item.method %>
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 hidden md:table-cell">
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold <%= item.color === 'blue' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800' %> uppercase">
+                                    <%= item.method %>
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 text-center">
+                                <button class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-red-50 text-red-600 hover:bg-red-600 hover:text-white transition shadow-sm border border-red-100">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                </button>
+                            </td>
+                        </tr>
+                        <% }) %>
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="bg-gray-50 px-6 py-4 flex items-center justify-between border-t border-gray-100">
+                <p class="text-xs text-gray-500 font-medium italic">* ข้อมูลอัปเดตแบบเรียลไทม์จากกรมบัญชีกลาง</p>
+                <div class="flex space-x-2">
+                    <button class="px-3 py-1 bg-white border border-gray-300 rounded text-xs text-gray-600 hover:bg-gray-50 transition disabled:opacity-50" disabled>ก่อนหน้า</button>
+                    <button class="px-3 py-1 bg-blue-600 border border-blue-600 rounded text-xs text-white hover:bg-blue-700 transition">ถัดไป</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</section>

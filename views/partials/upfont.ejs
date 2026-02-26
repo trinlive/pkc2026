@@ -1,0 +1,81 @@
+<div id="fontSizer" class="fixed right-4 top-1/2 -translate-y-1/2 z-40 opacity-100 transition-opacity duration-300">
+    <div class="flex flex-col items-center bg-gradient-to-b from-blue-700 to-blue-900 border-2 border-yellow-500 rounded-full p-3 shadow-xl backdrop-blur-sm">
+        <div class="hidden text-[10px] text-yellow-300 mb-2 uppercase font-bold tracking-tighter">ฟอนต์</div>
+        
+        <div class="flex flex-col space-y-2">
+            <button onclick="changeFontSize('increase')" 
+                    title="ขยายขนาดตัวอักษร" 
+                    class="w-8 h-8 flex items-center justify-center rounded-full bg-yellow-500 hover:bg-yellow-400 text-blue-900 transition-all duration-200 text-lg font-bold border border-yellow-600 active:scale-90 shadow-lg hover:shadow-yellow-500/50">
+                ก+
+            </button>
+            
+            <button onclick="changeFontSize('reset')" 
+                    title="ขนาดปกติ" 
+                    class="w-8 h-8 flex items-center justify-center rounded-full bg-blue-600 hover:bg-blue-500 text-yellow-300 transition-all duration-200 text-sm font-bold border border-yellow-500 active:scale-90 shadow-lg">
+                ก
+            </button>
+            
+            <button onclick="changeFontSize('decrease')" 
+                    title="ลดขนาดตัวอักษร" 
+                    class="w-8 h-8 flex items-center justify-center rounded-full bg-yellow-500 hover:bg-yellow-400 text-blue-900 transition-all duration-200 text-lg font-bold border border-yellow-600 active:scale-90 shadow-lg hover:shadow-yellow-500/50">
+                ก-
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // การจัดการขนาดฟอนต์ (Font Size Management)
+    let currentFontSize = 100;
+    const fontSizeStep = 10;
+    const fontSizeMax = 150;
+    const fontSizeMin = 80;
+    let scrollTimeout;
+
+    function changeFontSize(action) {
+        if (action === 'increase') {
+            if (currentFontSize < fontSizeMax) currentFontSize += fontSizeStep;
+        } else if (action === 'decrease') {
+            if (currentFontSize > fontSizeMin) currentFontSize -= fontSizeStep;
+        } else {
+            currentFontSize = 100;
+        }
+
+        document.documentElement.style.fontSize = currentFontSize + '%';
+        localStorage.setItem('pkc-font-size', currentFontSize);
+        console.log('Font size changed to:', currentFontSize + '%');
+    }
+
+    // ตรวจสอบค่าที่บันทึกไว้เมื่อโหลดหน้าเว็บ
+    window.addEventListener('DOMContentLoaded', function() {
+        const savedSize = localStorage.getItem('pkc-font-size');
+        if (savedSize) {
+            currentFontSize = parseInt(savedSize);
+            document.documentElement.style.fontSize = currentFontSize + '%';
+            console.log('Loaded font size from localStorage:', currentFontSize + '%');
+        }
+    });
+
+    // ทำให้ปุ่มจางลงเมื่อ scroll
+    const fontSizer = document.getElementById('fontSizer');
+    
+    window.addEventListener('scroll', function() {
+        if (fontSizer) {
+            fontSizer.classList.remove('opacity-100');
+            fontSizer.classList.add('opacity-30');
+            
+            clearTimeout(scrollTimeout);
+            scrollTimeout = setTimeout(function() {
+                fontSizer.classList.remove('opacity-30');
+                fontSizer.classList.add('opacity-100');
+            }, 1500);
+        }
+    });
+
+    // hover ให้สว่างขึ้น
+    fontSizer.addEventListener('mouseenter', function() {
+        clearTimeout(scrollTimeout);
+        this.classList.remove('opacity-30');
+        this.classList.add('opacity-100');
+    });
+</script>
