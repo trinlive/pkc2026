@@ -1,0 +1,22 @@
+# Dependency directories
+node_modules/
+
+# Environment variables (เก็บรหัสผ่าน DB/Key ต่างๆ)
+.env
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS metadata
+.DS_Store
+Thumbs.db
+
+# Project specific
+trinyah/
+test-db.js
+
+# IDEs/Editors
+.vscode/
+.idea/

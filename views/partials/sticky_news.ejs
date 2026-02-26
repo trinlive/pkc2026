@@ -1,0 +1,60 @@
+<div id="sticky-news-bar" class="fixed bottom-0 left-0 w-full bg-blue-900 text-white z-50 shadow-[0_-4px_10px_rgba(0,0,0,0.2)] border-t border-yellow-500">
+    <div class="max-w-7xl mx-auto px-4 flex items-center h-12">
+        
+        <div class="bg-yellow-500 text-blue-900 text-xs md:text-sm font-bold px-3 py-1 rounded shadow-sm mr-3 flex-shrink-0 flex items-center">
+            <span class="animate-pulse mr-2 h-2.5 w-2.5 bg-red-600 rounded-full"></span>
+            ประกาศด่วน
+        </div>
+
+        <div class="overflow-hidden h-6 relative flex-1">
+            <ul id="news-ticker" class="absolute top-0 left-0 w-full transition-transform duration-500 ease-in-out">
+                <li class="h-6 flex items-center truncate text-sm md:text-base hover:text-yellow-400 transition cursor-pointer">
+                    <a href="#">แจ้งเตือน: โปรดระวังมิจฉาชีพแอบอ้างเป็นเจ้าหน้าที่เทศบาล หลอกเก็บเงินค่าขยะ</a>
+                </li>
+                <li class="h-6 flex items-center truncate text-sm md:text-base hover:text-yellow-400 transition cursor-pointer">
+                    <a href="#">ประกาศขยายเวลาชำระภาษีที่ดินและสิ่งปลูกสร้าง ประจำปี ๒๕๖๙ ถึงสิ้นเดือนนี้</a>
+                </li>
+                <li class="h-6 flex items-center truncate text-sm md:text-base hover:text-yellow-400 transition cursor-pointer">
+                    <a href="#">ขอเชิญชวนประชาชนร่วมกิจกรรม Big Cleaning Day บริเวณท่าน้ำปากเกร็ด วันอาทิตย์นี้</a>
+                </li>
+                <li class="h-6 flex items-center truncate text-sm md:text-base hover:text-yellow-400 transition cursor-pointer">
+                    <a href="#">อัปเดตสถานการณ์น้ำ: ระดับน้ำในแม่น้ำเจ้าพระยายังอยู่ในเกณฑ์ปกติ เทศบาลเฝ้าระวัง 24 ชม.</a>
+                </li>
+            </ul>
+        </div>
+
+        <button onclick="document.getElementById('sticky-news-bar').style.display='none'" class="ml-3 text-blue-300 hover:text-white focus:outline-none transition">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const ticker = document.getElementById('news-ticker');
+        const items = ticker.querySelectorAll('li');
+        const itemHeight = 24; // ความสูงเท่ากับคลาส h-6 ของ Tailwind (6 * 4 = 24px)
+        let currentIndex = 0;
+        const totalItems = items.length;
+
+        // Clone element ตัวแรกไปต่อท้าย เพื่อให้เลื่อนวนลูปกลับมาเริ่มใหม่ได้แบบเนียนๆ (Seamless Loop)
+        const firstItemClone = items[0].cloneNode(true);
+        ticker.appendChild(firstItemClone);
+
+        setInterval(() => {
+            currentIndex++;
+            ticker.style.transition = 'transform 0.5s ease-in-out';
+            ticker.style.transform = `translateY(-${currentIndex * itemHeight}px)`;
+
+            // เมื่อเลื่อนมาถึงตัวที่ Clone ไว้ (ตัวสุดท้าย) ให้แอบรีเซ็ตกลับไปตัวแรกทันที
+            if (currentIndex === totalItems) {
+                setTimeout(() => {
+                    ticker.style.transition = 'none'; // ปิดอนิเมชันชั่วคราว
+                    ticker.style.transform = `translateY(0)`; // กระโดดกลับไปจุดเริ่มต้น
+                    currentIndex = 0; // รีเซ็ตตัวนับ
+                }, 500); // รอให้อนิเมชันเลื่อนจบก่อน (500ms)
+            }
+        }, 3500); // เปลี่ยนข่าวทุกๆ 3.5 วินาที
+    });
+</script>

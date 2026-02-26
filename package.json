@@ -1,0 +1,27 @@
+{
+  "name": "n.pakkretcity.go.th",
+  "version": "1.0.0",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "pm2 start server.js --name n-pakkret --watch",
+    "build:css": "./node_modules/.bin/tailwindcss -i ./src/css/input.css -o ./public/css/style.css",
+    "watch:css": "./node_modules/.bin/tailwindcss -i ./src/css/input.css -o ./public/css/style.css --watch",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "Pakkret City Node.js MVC Application",
+  "dependencies": {
+    "ejs": "^3.1.10",
+    "express": "^5.2.1",
+    "mysql2": "^3.18.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.0.0",
+    "autoprefixer": "^10.4.24",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.0.0"
+  }
+}

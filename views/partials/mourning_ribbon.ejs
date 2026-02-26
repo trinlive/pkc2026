@@ -1,0 +1,25 @@
+<div id="mourning-ribbon" 
+     title="คลิกเพื่อสลับโหมดไว้ทุกข์ (ขาวดำ)"
+     class="fixed top-2 left-2 md:top-4 md:left-4 z-[10000] text-5xl md:text-7xl cursor-pointer transition-all duration-1000 hover:scale-110 drop-shadow-lg">
+    🎗️
+</div>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const ribbon = document.getElementById("mourning-ribbon");
+    const body = document.body;
+
+    // ตั้งค่า Transition ให้ body เพื่อให้ตอนเปลี่ยนเป็นสีขาวดำดูนุ่มนวล ไม่กระตุก
+    body.style.transition = "filter 1s ease-in-out";
+
+    if (ribbon) {
+      ribbon.addEventListener("click", function () {
+        // ใช้คำสั่ง toggle เพื่อสลับเพิ่ม/ลบ คลาส grayscale ให้กับหน้าเว็บ
+        body.classList.toggle("grayscale");
+        
+        // สลับคลาส grayscale ให้กับตัวอีโมจิริบบิ้นด้วย เพื่อให้เปลี่ยนเป็นสีดำพร้อมกัน
+        ribbon.classList.toggle("grayscale");
+      });
+    }
+  });
+</script>
