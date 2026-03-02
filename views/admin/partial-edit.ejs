@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %></title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Sarabun', sans-serif; }
+        .code-editor {
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="flex min-h-screen">
+        <!-- Sidebar -->
+        <%- include('admin-panel', { currentPage }) %>
+
+        <!-- Main Content -->
+        <main class="flex-1 p-8">
+            <div class="max-w-6xl mx-auto">
+                <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                    <h2 class="text-3xl font-bold text-gray-800">แก้ไข Partial</h2>
+                    <p class="text-gray-600 mt-2"><%= filename %></p>
+                </div>
+
+                <form action="/admin/partials/<%= filename %>" method="POST">
+                    <div class="bg-white rounded-lg shadow-md p-6">
+                        <label class="block text-lg font-bold text-gray-800 mb-2">เนื้อหาไฟล์:</label>
+                        <textarea name="content" rows="25" class="code-editor w-full p-4 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none"><%= content %></textarea>
+                        
+                        <div class="mt-6 flex gap-4">
+                            <button type="submit" class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 font-bold">
+                                💾 บันทึกการแก้ไข
+                            </button>
+                            <a href="/admin/partials" class="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 inline-block">
+                                ← ยกเลิก
+                            </a>
+                        </div>
+                    </div>
+                </form>
+
+                <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mt-6">
+                    <p class="text-sm text-yellow-800">
+                        ⚠️ <strong>คำเตือน:</strong> การแก้ไขไฟล์นี้จะส่งผลต่อการแสดงผลของเว็บไซต์โดยตรง กรุณาตรวจสอบให้ดีก่อนบันทึก
+                    </p>
+                </div>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

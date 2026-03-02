@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %></title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;700&display=swap" rel="stylesheet">
+    
+    <!-- Flatpickr -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/material_orange.css">
+    
+    <style>
+        body { font-family: 'Sarabun', sans-serif; }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="flex min-h-screen">
+        <!-- Sidebar -->
+        <%- include('admin-panel', { currentPage }) %>
+
+        <!-- Main Content -->
+        <main class="flex-1 p-8">
+            <div class="max-w-3xl mx-auto">
+                <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                    <h2 class="text-3xl font-bold text-gray-800">เพิ่มข่าวใหม่</h2>
+                    <p class="text-gray-600 mt-2">กรอกรายละเอียดข่าวสาร</p>
+                </div>
+
+                <form action="/admin/add" method="POST" class="bg-white rounded-lg shadow-md p-6">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">หัวข้อข่าว</label>
+                            <input type="text" name="title" required class="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-orange-500 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">วันที่แสดง</label>
+                            <input type="text" id="datepicker" name="date_posted" required readonly 
+                                   class="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-orange-500 focus:outline-none cursor-pointer bg-white"
+                                   placeholder="เลือกวันที่...">
+                        </div>
+                        <div class="pt-4 flex gap-4">
+                            <button type="submit" class="bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 px-6 rounded-lg transition shadow-md">
+                                💾 บันทึกข้อมูล
+                            </button>
+                            <a href="/admin/dashboard" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-6 rounded-lg transition inline-block">
+                                ← ยกเลิก
+                            </a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </main>
+    </div>
+    
+    <!-- Flatpickr JS -->
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/th.js"></script>
+    
+    <script>
+        flatpickr("#datepicker", {
+            locale: "th",
+            dateFormat: "d M Y",
+            altInput: true,
+            altFormat: "j M Y",
+            defaultDate: new Date(),
+            onChange: function(selectedDates, dateStr, instance) {
+                // แปลงเป็นรูปแบบภาษาไทย (เช่น 26 ก.พ. 2569)
+                const thaiMonths = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 
+                                   'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+                
+                if (selectedDates.length > 0) {
+                    const date = selectedDates[0];
+                    const day = date.getDate();
+                    const month = thaiMonths[date.getMonth()];
+                    const year = date.getFullYear() + 543; // แปลงเป็นพ.ศ.
+                    
+                    const formattedDate = `${day} ${month} ${year}`;
+                    instance.input.value = formattedDate;
+                }
+            }
+        });
+    </script>
+</body>
+</html>

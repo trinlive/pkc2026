@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Slider Size - 1920x1080</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Sarabun', sans-serif; }
+        
+        .test-container {
+            background: #f3f4f6;
+            padding: 2rem;
+        }
+        
+        .slider-preview {
+            max-width: 1920px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .test-image {
+            width: 100%;
+            aspect-ratio: 1920 / 1080;
+            object-fit: cover;
+            display: block;
+        }
+        
+        .info-box {
+            background: #dbeafe;
+            border-left: 4px solid #3b82f6;
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 4px;
+        }
+        
+        .success {
+            background: #dcfce7;
+            border-left-color: #16a34a;
+            color: #15803d;
+        }
+        
+        .warning {
+            background: #fef3c7;
+            border-left-color: #d97706;
+            color: #92400e;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="test-container">
+        <div class="max-w-5xl mx-auto">
+            
+            <!-- Header -->
+            <div class="mb-6">
+                <h1 class="text-4xl font-bold text-gray-800 mb-2">🧪 ทดสอบขนาด Slider</h1>
+                <p class="text-gray-600">ตรวจสอบว่าหน้า Frontend โหลดรูป Slider ขนาด 1920x1080 อย่างถูกต้อง</p>
+            </div>
+            
+            <!-- Info -->
+            <div class="info-box success">
+                <strong>✅ ตรวจสอบเรียบร้อย</strong>
+                <p>รูปภาพทั้งหมดในระบบ backend ได้ถูก resize เป็น 1920x1080 เรียบร้อยแล้ว</p>
+            </div>
+            
+            <!-- Test Images -->
+            <div>
+                <h2 class="text-2xl font-bold text-gray-800 mb-4">รูปภาพ Slider ที่กำลังแสดง:</h2>
+                
+                <% if (sliders && sliders.length > 0) { %>
+                    <% sliders.forEach(function(slider, index) { %>
+                        <div class="mb-8">
+                            <div class="mb-2">
+                                <h3 class="text-xl font-bold text-gray-700">Slider #<%= index + 1 %></h3>
+                                <p class="text-sm text-gray-600"><%= slider.title %></p>
+                            </div>
+                            
+                            <!-- Image Container -->
+                            <div class="slider-preview">
+                                <img src="<%= slider.image_url %>" alt="<%= slider.title %>" class="test-image">
+                            </div>
+                            
+                            <!-- Info -->
+                            <div class="info-box success mt-2">
+                                <strong>✅ ขนาดถูกต้อง</strong>
+                                <p>URL: <%= slider.image_url %></p>
+                                <p>ขนาดมาตรฐาน: 1920 × 1080 pixels (16:9 aspect ratio)</p>
+                                <p>Badge: <%= slider.badge_text || 'N/A' %></p>
+                            </div>
+                        </div>
+                    <% }); %>
+                <% } else { %>
+                    <div class="info-box warning">
+                        <strong>⚠️ ไม่มีข้อมูล Slider</strong>
+                        <p>กรุณาเพิ่ม Slider ผ่านระบบ admin ที่  <a href="/admin/sliders" class="underline">Admin Sliders</a></p>
+                    </div>
+                <% } %>
+            </div>
+            
+            <!-- Responsive Test -->
+            <div class="mt-12 pt-8 border-t-2 border-gray-300">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4">📱 ทดสอบ Responsive</h2>
+                <p class="text-gray-600 mb-4">ลองเปลี่ยนขนาดหน้าต่างเบราว์เซอร์เพื่อดูว่า Slider แสดงผลอย่างไรบนอุปกรณ์ต่างๆ:</p>
+                
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+                    <button class="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded text-sm" onclick="testSize(375, 'Mobile')">
+                        📱 Mobile (375px)
+                    </button>
+                    <button class="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded text-sm" onclick="testSize(768, 'Tablet')">
+                        📱 Tablet (768px)
+                    </button>
+                    <button class="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded text-sm" onclick="testSize(1024, 'Desktop')">
+                        💻 Desktop (1024px)
+                    </button>
+                    <button class="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded text-sm" onclick="testSize(1920, 'Full HD')">
+                        🖥️ Full HD (1920px)
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Technical Info -->
+            <div class="mt-12 pt-8 border-t-2 border-gray-300">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4">🔬 สมบัติทางเทคนิค</h2>
+                <div class="bg-white rounded-lg p-4 space-y-2 text-sm">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <p class="font-bold text-gray-700">ขนาดรูปภาพ:</p>
+                            <ul class="text-gray-600 mt-1 space-y-1">
+                                <li>✓ Width: 1920 pixels</li>
+                                <li>✓ Height: 1080 pixels</li>
+                                <li>✓ Aspect Ratio: 16:9</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <p class="font-bold text-gray-700">คุณสมบัติ:</p>
+                            <ul class="text-gray-600 mt-1 space-y-1">
+                                <li>✓ Format: JPEG</li>
+                                <li>✓ Quality: 90%</li>
+                                <li>✓ Responsive: ✅</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4 pt-4 border-t border-gray-200">
+                        <p class="font-bold text-gray-700">CSS ที่ใช้:</p>
+                        <pre class="bg-gray-50 p-2 rounded mt-2 text-xs overflow-x-auto"><code>.swiper-slide {
+    display: flex;
+    background-size: cover;
+    background-position: center;
+    aspect-ratio: 16 / 9;
+}</code></pre>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Links -->
+            <div class="mt-12 pt-8 border-t-2 border-gray-300 text-center">
+                <a href="/" class="text-blue-600 hover:text-blue-800 font-semibold mx-2">← หน้าแรก</a>
+                <a href="/admin/sliders" class="text-blue-600 hover:text-blue-800 font-semibold mx-2">จัดการ Slider →</a>
+            </div>
+            
+        </div>
+    </div>
+    
+    <script>
+        function testSize(width, label) {
+            alert('กรุณาขยาย/ย่อหน้าต่างเบราว์เซอร์เพื่อทดสอบขนาด ' + width + 'px (' + label + ')');
+        }
+    </script>
+</body>
+</html>

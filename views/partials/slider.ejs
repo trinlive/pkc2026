@@ -2,23 +2,50 @@
 <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
 
 <style>
-    /* ปรับแต่ง Slider ให้เต็มจอและดู Modern */
+    /* ปรับแต่ง Slider ให้เต็มจอและดู Modern - รองรับทุก Resolution */
     .hero-swiper { 
         width: 100%; 
         height: 50vh; /* ความสูงเริ่มต้นสำหรับมือถือ */
+        min-height: 400px; /* ความสูงขั้นต่ำสำหรับจอเล็ก */
+        max-height: 900px; /* ความสูงสูงสุดสำหรับจอใหญ่มาก */
     }
+    
     @media (min-width: 768px) {
-        .hero-swiper { height: 60vh; } /* แท็บเล็ต */
+        .hero-swiper { 
+            height: 60vh; 
+            min-height: 500px;
+        }
     }
+    
     @media (min-width: 1280px) {
-        .hero-swiper { height: 70vh; } /* จอคอมพิวเตอร์ขนาดใหญ่ */
+        .hero-swiper { 
+            height: 70vh; 
+            min-height: 600px;
+        }
+    }
+    
+    /* สำหรับจอ Ultra-wide (21:9) */
+    @media (min-aspect-ratio: 21/9) {
+        .hero-swiper { 
+            height: 80vh;
+            max-height: 1000px;
+        }
+    }
+    
+    /* สำหรับจอแนวตั้ง (Portrait) */
+    @media (max-aspect-ratio: 9/16) {
+        .hero-swiper { 
+            height: 40vh;
+            min-height: 350px;
+        }
     }
     
     .swiper-slide {
         display: flex; 
         align-items: flex-end; /* ให้ข้อความอยู่ด้านล่าง */
-        background-size: cover; 
-        background-position: center;
+        background-size: cover; /* ปกคลุมเต็มพื้นที่ */
+        background-position: center center; /* จัดกลางทั้ง 2 แกน */
+        background-repeat: no-repeat; /* ไม่ซ้ำภาพ */
     }
     
     /* ไล่สีพื้นหลังข้อความให้ดูลึก (Cinematic Gradient) */
@@ -42,95 +69,38 @@
     <div class="swiper hero-swiper">
         <div class="swiper-wrapper">
             
-            <div class="swiper-slide" style="background-image: url('https://picsum.photos/1920/1080?random=1');">
-                <div class="slider-overlay"></div>
-                <div class="absolute bottom-8 md:bottom-12 left-0 w-full px-4 sm:px-8 md:px-16 lg:px-24 z-10 max-w-7xl mx-auto">
-                    <span class="bg-blue-600 px-2.5 py-1 md:px-3 md:py-1.5 rounded-full text-[10px] md:text-xs font-bold mb-2 md:mb-3 inline-block text-white shadow-lg">ข่าวเด่น</span>
-                    <h2 class="text-2xl sm:text-3xl md:text-5xl font-bold text-white mb-2 leading-tight drop-shadow-lg line-clamp-2 md:line-clamp-none">เทศบาลนครปากเกร็ด คว้ารางวัลเมืองน่าอยู่</h2>
-                    <p class="text-sm sm:text-base md:text-xl text-gray-200 drop-shadow-md line-clamp-2">มุ่งมั่นพัฒนาคุณภาพชีวิตประชาชนอย่างยั่งยืน สู่เมืองแห่งอนาคต</p>
+            <% if (typeof sliders !== 'undefined' && sliders && sliders.length > 0) { %>
+                <% sliders.forEach(function(slider) { %>
+                    <div class="swiper-slide" style="background-image: url('<%= slider.image_url %>');">
+                        <div class="slider-overlay"></div>
+                        <div class="absolute bottom-8 md:bottom-12 left-0 w-full px-4 sm:px-8 md:px-16 lg:px-24 z-10 max-w-7xl mx-auto">
+                            <% if (slider.badge_text) { %>
+                                <span class="bg-blue-600 px-2.5 py-1 md:px-3 md:py-1.5 rounded-full text-[10px] md:text-xs font-bold mb-2 md:mb-3 inline-block text-white shadow-lg"><%= slider.badge_text %></span>
+                            <% } %>
+                            <% if (slider.link_url) { %>
+                                <a href="<%= slider.link_url %>" class="block">
+                                    <h2 class="text-2xl sm:text-3xl md:text-5xl font-bold text-white mb-2 leading-tight drop-shadow-lg line-clamp-2 md:line-clamp-none hover:text-yellow-400 transition-colors"><%= slider.title %></h2>
+                                </a>
+                            <% } else { %>
+                                <h2 class="text-2xl sm:text-3xl md:text-5xl font-bold text-white mb-2 leading-tight drop-shadow-lg line-clamp-2 md:line-clamp-none"><%= slider.title %></h2>
+                            <% } %>
+                            <% if (slider.subtitle) { %>
+                                <p class="text-sm sm:text-base md:text-xl text-gray-200 drop-shadow-md line-clamp-2"><%= slider.subtitle %></p>
+                            <% } %>
+                        </div>
+                    </div>
+                <% }); %>
+            <% } else { %>
+                <!-- Fallback content กรณีไม่มีข้อมูล slider -->
+                <div class="swiper-slide" style="background-image: url('https://picsum.photos/1920/1080?random=1');">
+                    <div class="slider-overlay"></div>
+                    <div class="absolute bottom-8 md:bottom-12 left-0 w-full px-4 sm:px-8 md:px-16 lg:px-24 z-10 max-w-7xl mx-auto">
+                        <span class="bg-blue-600 px-2.5 py-1 md:px-3 md:py-1.5 rounded-full text-[10px] md:text-xs font-bold mb-2 md:mb-3 inline-block text-white shadow-lg">ข่าวเด่น</span>
+                        <h2 class="text-2xl sm:text-3xl md:text-5xl font-bold text-white mb-2 leading-tight drop-shadow-lg line-clamp-2 md:line-clamp-none">ยินดีต้อนรับสู่เทศบาลนครปากเกร็ด</h2>
+                        <p class="text-sm sm:text-base md:text-xl text-gray-200 drop-shadow-md line-clamp-2">มุ่งมั่นพัฒนาคุณภาพชีวิตประชาชนอย่างยั่งยืน สู่เมืองแห่งอนาคต</p>
+                    </div>
                 </div>
-            </div>
-
-            <div class="swiper-slide" style="background-image: url('https://picsum.photos/1920/1080?random=2');">
-                <div class="slider-overlay"></div>
-                <div class="absolute bottom-8 md:bottom-12 left-0 w-full px-4 sm:px-8 md:px-16 lg:px-24 z-10 max-w-7xl mx-auto">
-                    <span class="bg-yellow-500 px-2.5 py-1 md:px-3 md:py-1.5 rounded-full text-[10px] md:text-xs font-bold mb-2 md:mb-3 inline-block text-gray-900 shadow-lg">ศิลปวัฒนธรรม</span>
-                    <h2 class="text-2xl sm:text-3xl md:text-5xl font-bold text-white mb-2 leading-tight drop-shadow-lg line-clamp-2 md:line-clamp-none">ประเพณีตักบาตรทางน้ำ เกาะเกร็ด</h2>
-                    <p class="text-sm sm:text-base md:text-xl text-gray-200 drop-shadow-md line-clamp-2">สืบสานวัฒนธรรมท้องถิ่นอันงดงามของชาวมอญ เสน่ห์แห่งสายน้ำเจ้าพระยา</p>
-                </div>
-            </div>
-
-            <div class="swiper-slide" style="background-image: url('https://picsum.photos/1920/1080?random=3');">
-                <div class="slider-overlay"></div>
-                <div class="absolute bottom-8 md:bottom-12 left-0 w-full px-4 sm:px-8 md:px-16 lg:px-24 z-10 max-w-7xl mx-auto">
-                    <span class="bg-green-600 px-2.5 py-1 md:px-3 md:py-1.5 rounded-full text-[10px] md:text-xs font-bold mb-2 md:mb-3 inline-block text-white shadow-lg">สาธารณสุข</span>
-                    <h2 class="text-2xl sm:text-3xl md:text-5xl font-bold text-white mb-2 leading-tight drop-shadow-lg line-clamp-2 md:line-clamp-none">ยกระดับบริการศูนย์แพทย์ชุมชน</h2>
-                    <p class="text-sm sm:text-base md:text-xl text-gray-200 drop-shadow-md line-clamp-2">เปิดศูนย์การแพทย์แห่งใหม่ ครบวงจร พร้อมให้บริการดูแลสุขภาพประชาชน 24 ชั่วโมง</p>
-                </div>
-            </div>
-
-            <div class="swiper-slide" style="background-image: url('https://picsum.photos/1920/1080?random=4');">
-                <div class="slider-overlay"></div>
-                <div class="absolute bottom-8 md:bottom-12 left-0 w-full px-4 sm:px-8 md:px-16 lg:px-24 z-10 max-w-7xl mx-auto">
-                    <span class="bg-purple-600 px-2.5 py-1 md:px-3 md:py-1.5 rounded-full text-[10px] md:text-xs font-bold mb-2 md:mb-3 inline-block text-white shadow-lg">บริการออนไลน์</span>
-                    <h2 class="text-2xl sm:text-3xl md:text-5xl font-bold text-white mb-2 leading-tight drop-shadow-lg line-clamp-2 md:line-clamp-none">เปิดตัวระบบ E-Service เต็มรูปแบบ</h2>
-                    <p class="text-sm sm:text-base md:text-xl text-gray-200 drop-shadow-md line-clamp-2">ติดต่อราชการ จองคิว ชำระภาษี สะดวก รวดเร็ว ผ่านสมาร์ทโฟนได้ทุกที่ทุกเวลา</p>
-                </div>
-            </div>
-
-            <div class="swiper-slide" style="background-image: url('https://picsum.photos/1920/1080?random=5');">
-                <div class="slider-overlay"></div>
-                <div class="absolute bottom-8 md:bottom-12 left-0 w-full px-4 sm:px-8 md:px-16 lg:px-24 z-10 max-w-7xl mx-auto">
-                    <span class="bg-emerald-500 px-2.5 py-1 md:px-3 md:py-1.5 rounded-full text-[10px] md:text-xs font-bold mb-2 md:mb-3 inline-block text-white shadow-lg">สิ่งแวดล้อม</span>
-                    <h2 class="text-2xl sm:text-3xl md:text-5xl font-bold text-white mb-2 leading-tight drop-shadow-lg line-clamp-2 md:line-clamp-none">โครงการปรับปรุงภูมิทัศน์สวนสาธารณะ</h2>
-                    <p class="text-sm sm:text-base md:text-xl text-gray-200 drop-shadow-md line-clamp-2">เพิ่มพื้นที่สีเขียว ปอดแห่งใหม่ของชาวปากเกร็ด เพื่อการพักผ่อนและออกกำลังกาย</p>
-                </div>
-            </div>
-
-            <div class="swiper-slide" style="background-image: url('https://picsum.photos/1920/1080?random=6');">
-                <div class="slider-overlay"></div>
-                <div class="absolute bottom-8 md:bottom-12 left-0 w-full px-4 sm:px-8 md:px-16 lg:px-24 z-10 max-w-7xl mx-auto">
-                    <span class="bg-pink-500 px-2.5 py-1 md:px-3 md:py-1.5 rounded-full text-[10px] md:text-xs font-bold mb-2 md:mb-3 inline-block text-white shadow-lg">การศึกษา</span>
-                    <h2 class="text-2xl sm:text-3xl md:text-5xl font-bold text-white mb-2 leading-tight drop-shadow-lg line-clamp-2 md:line-clamp-none">สนับสนุนสื่อการเรียนรู้ยุคดิจิทัล</h2>
-                    <p class="text-sm sm:text-base md:text-xl text-gray-200 drop-shadow-md line-clamp-2">มอบแท็บเล็ตและปรับปรุงห้องคอมพิวเตอร์ให้โรงเรียนในสังกัดเทศบาลทั้ง 3 แห่ง</p>
-                </div>
-            </div>
-
-            <div class="swiper-slide" style="background-image: url('https://picsum.photos/1920/1080?random=7');">
-                <div class="slider-overlay"></div>
-                <div class="absolute bottom-8 md:bottom-12 left-0 w-full px-4 sm:px-8 md:px-16 lg:px-24 z-10 max-w-7xl mx-auto">
-                    <span class="bg-orange-500 px-2.5 py-1 md:px-3 md:py-1.5 rounded-full text-[10px] md:text-xs font-bold mb-2 md:mb-3 inline-block text-white shadow-lg">ส่งเสริมอาชีพ</span>
-                    <h2 class="text-2xl sm:text-3xl md:text-5xl font-bold text-white mb-2 leading-tight drop-shadow-lg line-clamp-2 md:line-clamp-none">เปิดตลาดนัดถนนคนเดิน วิถีชุมชน</h2>
-                    <p class="text-sm sm:text-base md:text-xl text-gray-200 drop-shadow-md line-clamp-2">กระตุ้นเศรษฐกิจฐานราก สร้างรายได้ให้พ่อค้าแม่ค้าในพื้นที่เทศบาลนครปากเกร็ด</p>
-                </div>
-            </div>
-
-            <div class="swiper-slide" style="background-image: url('https://picsum.photos/1920/1080?random=8');">
-                <div class="slider-overlay"></div>
-                <div class="absolute bottom-8 md:bottom-12 left-0 w-full px-4 sm:px-8 md:px-16 lg:px-24 z-10 max-w-7xl mx-auto">
-                    <span class="bg-gray-600 px-2.5 py-1 md:px-3 md:py-1.5 rounded-full text-[10px] md:text-xs font-bold mb-2 md:mb-3 inline-block text-white shadow-lg">โครงสร้างพื้นฐาน</span>
-                    <h2 class="text-2xl sm:text-3xl md:text-5xl font-bold text-white mb-2 leading-tight drop-shadow-lg line-clamp-2 md:line-clamp-none">โครงการขยายถนนและซ่อมแซมท่อระบายน้ำ</h2>
-                    <p class="text-sm sm:text-base md:text-xl text-gray-200 drop-shadow-md line-clamp-2">แก้ปัญหาการจราจรติดขัดและปัญหาน้ำท่วมขังในช่วงฤดูฝนอย่างเป็นรูปธรรม</p>
-                </div>
-            </div>
-
-            <div class="swiper-slide" style="background-image: url('https://picsum.photos/1920/1080?random=9');">
-                <div class="slider-overlay"></div>
-                <div class="absolute bottom-8 md:bottom-12 left-0 w-full px-4 sm:px-8 md:px-16 lg:px-24 z-10 max-w-7xl mx-auto">
-                    <span class="bg-red-600 px-2.5 py-1 md:px-3 md:py-1.5 rounded-full text-[10px] md:text-xs font-bold mb-2 md:mb-3 inline-block text-white shadow-lg">ความปลอดภัย</span>
-                    <h2 class="text-2xl sm:text-3xl md:text-5xl font-bold text-white mb-2 leading-tight drop-shadow-lg line-clamp-2 md:line-clamp-none">ซ้อมแผนเผชิญเหตุและบรรเทาสาธารณภัย</h2>
-                    <p class="text-sm sm:text-base md:text-xl text-gray-200 drop-shadow-md line-clamp-2">เตรียมความพร้อมเจ้าหน้าที่กู้ภัย ดับเพลิง เพื่อปกป้องชีวิตและทรัพย์สินของประชาชน</p>
-                </div>
-            </div>
-
-            <div class="swiper-slide" style="background-image: url('https://picsum.photos/1920/1080?random=10');">
-                <div class="slider-overlay"></div>
-                <div class="absolute bottom-8 md:bottom-12 left-0 w-full px-4 sm:px-8 md:px-16 lg:px-24 z-10 max-w-7xl mx-auto">
-                    <span class="bg-cyan-600 px-2.5 py-1 md:px-3 md:py-1.5 rounded-full text-[10px] md:text-xs font-bold mb-2 md:mb-3 inline-block text-white shadow-lg">บริการประชาชน</span>
-                    <h2 class="text-2xl sm:text-3xl md:text-5xl font-bold text-white mb-2 leading-tight drop-shadow-lg line-clamp-2 md:line-clamp-none">สายด่วนเทศบาล 1132 โทรฟรี 24 ชม.</h2>
-                    <p class="text-sm sm:text-base md:text-xl text-gray-200 drop-shadow-md line-clamp-2">แจ้งเหตุด่วน ร้องทุกข์ หรือสอบถามข้อมูลการรับบริการ เราพร้อมดูแลคุณเสมอ</p>
-                </div>
-            </div>
+            <% } %>
 
         </div>
         <div class="swiper-button-next"></div>

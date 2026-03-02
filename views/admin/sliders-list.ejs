@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %></title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Sarabun', sans-serif; }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="flex min-h-screen">
+        <!-- Sidebar -->
+        <%- include('admin-panel', { currentPage }) %>
+
+        <!-- Main Content -->
+        <main class="flex-1 p-8">
+            <div class="max-w-7xl mx-auto">
+                <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h2 class="text-3xl font-bold text-gray-800">จัดการ Slider</h2>
+                            <p class="text-gray-600 mt-2">จัดการภาพสไลด์หน้าแรกเว็บไซต์</p>
+                        </div>
+                        <a href="/admin/sliders/add" class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-bold transition shadow-md">
+                            ➕ เพิ่ม Slider ใหม่
+                        </a>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow-md overflow-hidden">
+                    <% if (sliders.length === 0) { %>
+                    <div class="p-12 text-center">
+                        <div class="text-6xl mb-4">🎬</div>
+                        <h3 class="text-xl font-bold text-gray-700 mb-2">ยังไม่มี Slider</h3>
+                        <p class="text-gray-500 mb-4">เริ่มต้นสร้าง Slider แรกของคุณ</p>
+                        <a href="/admin/sliders/add" class="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700">
+                            เพิ่ม Slider
+                        </a>
+                    </div>
+                    <% } else { %>
+                    <table class="w-full">
+                        <thead class="bg-gray-50 border-b-2 border-gray-200">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase">ลำดับ</th>
+                                <th class="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase">ภาพ</th>
+                                <th class="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase">หัวข้อ</th>
+                                <th class="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase">Badge</th>
+                                <th class="px-6 py-3 text-center text-xs font-bold text-gray-700 uppercase">สถานะ</th>
+                                <th class="px-6 py-3 text-center text-xs font-bold text-gray-700 uppercase">จัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200">
+                            <% sliders.forEach((slider, index) => { %>
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-6 py-4 text-sm font-medium text-gray-900"><%= slider.display_order %></td>
+                                <td class="px-6 py-4">
+                                    <img src="<%= slider.image_url %>" alt="<%= slider.title %>" class="w-24 h-16 object-cover rounded shadow">
+                                </td>
+                                <td class="px-6 py-4">
+                                    <div class="text-sm font-bold text-gray-900"><%= slider.title %></div>
+                                    <div class="text-xs text-gray-500 mt-1"><%= slider.subtitle %></div>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <% if (slider.badge_text) { %>
+                                    <span class="bg-blue-600 text-white px-2 py-1 rounded-full text-xs"><%= slider.badge_text %></span>
+                                    <% } else { %>
+                                    <span class="text-gray-400">-</span>
+                                    <% } %>
+                                </td>
+                                <td class="px-6 py-4 text-center">
+                                    <form action="/admin/sliders/toggle/<%= slider.id %>" method="POST" class="inline">
+                                        <button type="submit" class="<%= slider.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800' %> px-3 py-1 rounded-full text-xs font-bold">
+                                            <%= slider.is_active ? '✓ แสดง' : '✕ ซ่อน' %>
+                                        </button>
+                                    </form>
+                                </td>
+                                <td class="px-6 py-4 text-center">
+                                    <div class="flex gap-2 justify-center">
+                                        <a href="/admin/sliders/edit/<%= slider.id %>" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs font-bold">
+                                            ✏️ แก้ไข
+                                        </a>
+                                        <form action="/admin/sliders/delete/<%= slider.id %>" method="POST" class="inline" onsubmit="return confirm('ต้องการลบ Slider นี้?')">
+                                            <button type="submit" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs font-bold">
+                                                🗑️ ลบ
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                            <% }) %>
+                        </tbody>
+                    </table>
+                    <% } %>
+                </div>
+
+                <div class="mt-6">
+                    <a href="/admin/dashboard" class="inline-block bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700">
+                        ← กลับหน้า Dashboard
+                    </a>
+                </div>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

@@ -1,16 +1,28 @@
 const Post = require('../models/postModel');
+const Slider = require('../models/sliderModel');
 
 // หน้าแรก (ที่ทำเสร็จแล้ว)
 exports.getHomePage = async (req, res) => {
     try {
         const news = await Post.getAll();
+        const sliders = await Slider.getAll();
+        
+        // กรองเฉพาะ slider ที่ active และเรียงตาม display_order
+        const activeSliders = sliders.filter(slider => slider.is_active === 1);
+        
         res.render('index', { 
             title: 'หน้าแรก | เทศบาลนครปากเกร็ด',
             welcomeMessage: 'ยินดีต้อนรับสู่ระบบ N-Pakkret Node.js',
-            newsList: news 
+            newsList: news,
+            sliders: activeSliders
         });
     } catch (error) {
-        res.render('index', { title: 'Error', welcomeMessage: 'DB Error', newsList: [] });
+        res.render('index', { 
+            title: 'Error', 
+            welcomeMessage: 'DB Error', 
+            newsList: [],
+            sliders: []
+        });
     }
 };
 
