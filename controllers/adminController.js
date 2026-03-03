@@ -1133,11 +1133,19 @@ const adminController = {
                 limit = 10,
                 offset = 0,
                 categoryName = 'ข่าวประชาสัมพันธ์ | News',
-                useAiSummary = true
+                useAiSummary = true,
+                retryExisting = false,
+                articleIds = []
             } = req.body;
             const destinationMenu = 'news';
             const numericLimit = parseInt(limit, 10) || 10;
             const numericOffset = parseInt(offset, 10) || 0;
+            const shouldRetryExisting = retryExisting === true || retryExisting === 'true';
+            const selectedArticleIds = Array.isArray(articleIds)
+                ? articleIds
+                    .map((value) => parseInt(value, 10))
+                    .filter((value) => Number.isInteger(value) && value > 0)
+                : [];
 
             // 1. ดึงข่าวจาก Joomla DB
             const joomlaArticles = await JoomlaDB.getAllArticles(null, 0, 1);
@@ -1147,12 +1155,17 @@ const adminController = {
                 ? joomlaArticles.filter(art => art.category_name === categoryName)
                 : joomlaArticles;
 
-            const articlesToMigrate = filteredArticles.slice(numericOffset, numericOffset + numericLimit);
+            const scopedArticles = selectedArticleIds.length > 0
+                ? filteredArticles.filter((art) => selectedArticleIds.includes(art.id))
+                : filteredArticles.slice(numericOffset, numericOffset + numericLimit);
+
+            const articlesToMigrate = scopedArticles;
 
             // 2. แปลงและบันทึกเข้า pkc_nodeweb_db
             let successCount = 0;
             let skippedCount = 0;
             let errorCount = 0;
+            let updatedCount = 0;
             const errors = [];
             const allCopiedImages = [];
             const allImageErrors = [];
@@ -1177,15 +1190,16 @@ const adminController = {
                     // สร้างข่าวใหม่ - รวม introtext และ fulltext
                     const rawDescription = `${article.introtext || ''}\n\n${article.fulltext || ''}`.trim();
                     const postedDate = new Date(article.publish_up);
+                    const existingBySource = await News.getByMigrationSource(article.id);
 
                     // ป้องกันการ Migration ซ้ำ (title + date_posted + category)
-                    const alreadyExists = await News.existsForMigration(
+                    const alreadyExists = existingBySource || await News.existsForMigration(
                         article.title,
                         postedDate,
                         newsCategory
                     );
 
-                    if (alreadyExists) {
+                    if (alreadyExists && !shouldRetryExisting) {
                         skippedCount++;
                         continue;
                     }
@@ -1212,8 +1226,15 @@ const adminController = {
                     const attachmentResult = await extractAndCopyAttachmentsFromJoomla(rawDescription, postedDate);
                     let finalAttachmentUrl = attachmentResult.attachmentUrl || null;
 
-                    // 🔄 ถ้าไม่มีไฟล์แนบจาก HTML ให้ใช้รูปหัวข้อข่าวแทน (เพื่อให้ปุ่ม "อ่านรายละเอียด" ใช้งานได้)
-                    if (!finalAttachmentUrl && finalImageUrl) {
+                    // 🔄 ลำดับความสำคัญ attachment:
+                    // 1️⃣ PDF/JPG link จาก <a href> tags
+                    // 2️⃣ รูปที่ 2+ จากคอนเทนต์ (inline images) - ไม่ใช่รูปที่ 1 (thumbnail)
+                    // 3️⃣ Fallback: ใช้ thumbnail เท่านั้น
+                    if (!finalAttachmentUrl && imageCopyResult.copiedImages && imageCopyResult.copiedImages.length > 1) {
+                        // ถ้ามีรูปที่ 2+ ให้ใช้รูปสุดท้าย (ไม่ใช่อันแรก/thumbnail)
+                        finalAttachmentUrl = imageCopyResult.copiedImages[imageCopyResult.copiedImages.length - 1].copied;
+                    } else if (!finalAttachmentUrl && finalImageUrl) {
+                        // Fallback สุดท้าย: ใช้ thumbnail
                         finalAttachmentUrl = finalImageUrl;
                     }
 
@@ -1249,18 +1270,28 @@ const adminController = {
                         });
                     }
                     
-                    await News.create(
-                        article.title,
-                        finalDescription, // ใช้ content ที่แก้ไข path แล้ว
-                        finalImageUrl,    // ใช้ image URL ที่ชี้ไปยัง destination
-                        finalAttachmentUrl, // ไฟล์แนบสำหรับปุ่ม "อ่านรายละเอียด"
-                        newsCategory,
-                        postedDate,
-                        1, // is_published
-                        `joomla:${article.id}`
-                    );
+                    if (existingBySource && shouldRetryExisting) {
+                        await News.updateMigratedFields(
+                            existingBySource.id,
+                            finalDescription,
+                            finalImageUrl || existingBySource.image_url,
+                            finalAttachmentUrl || existingBySource.attachment_url
+                        );
+                        updatedCount++;
+                    } else {
+                        await News.create(
+                            article.title,
+                            finalDescription, // ใช้ content ที่แก้ไข path แล้ว
+                            finalImageUrl,    // ใช้ image URL ที่ชี้ไปยัง destination
+                            finalAttachmentUrl, // ไฟล์แนบสำหรับปุ่ม "อ่านรายละเอียด"
+                            newsCategory,
+                            postedDate,
+                            1, // is_published
+                            `joomla:${article.id}`
+                        );
 
-                    successCount++;
+                        successCount++;
+                    }
                 } catch (err) {
                     errorCount++;
                     errors.push({
@@ -1280,10 +1311,11 @@ const adminController = {
 
             res.json({
                 success: true,
-                message: `Migration completed: ${successCount} success, ${skippedCount} skipped, ${errorCount} errors | Images: ${totalImagesCopied} copied, ${totalImageErrors} errors | Attachments: ${totalAttachmentsCopied} copied, ${totalAttachmentErrors} errors`,
+                message: `Migration completed: ${successCount} created, ${updatedCount} updated, ${skippedCount} skipped, ${errorCount} errors | Images: ${totalImagesCopied} copied, ${totalImageErrors} errors | Attachments: ${totalAttachmentsCopied} copied, ${totalAttachmentErrors} errors`,
                 statistics: {
                     totalProcessed: articlesToMigrate.length,
                     successCount,
+                    updatedCount,
                     skippedCount,
                     errorCount,
                     errors,
@@ -1292,7 +1324,9 @@ const adminController = {
                     imagesCopied: totalImagesCopied,
                     imageErrors: totalImageErrors,
                     attachmentsCopied: totalAttachmentsCopied,
-                    attachmentErrors: totalAttachmentErrors
+                    attachmentErrors: totalAttachmentErrors,
+                    retryExisting: shouldRetryExisting,
+                    selectedArticleIds
                 },
                 imageDetails: {
                     copiedImages: allCopiedImages,

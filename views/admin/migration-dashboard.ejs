@@ -180,6 +180,15 @@
                                         class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg transition shadow-md">
                                     🚀 เริ่ม Migration
                                 </button>
+                                <button type="button" id="retryMigrateBtn"
+                                        class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded-lg transition shadow-md">
+                                    🔁 Re-Migrate Existing
+                                </button>
+                                <button type="button" id="cancelMigrateBtn"
+                                        class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-8 rounded-lg transition shadow-md opacity-50 cursor-not-allowed"
+                                        disabled>
+                                    ⛔ หยุดงาน
+                                </button>
                                 <button type="button" onclick="location.href='/admin/news'"
                                         class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-lg transition shadow-md">
                                     📋 ดูรายการข่าว
@@ -198,6 +207,13 @@
                                     กำลัง Migrate ข้อมูล...
                                 </p>
                                 <p id="progressText" class="text-sm text-gray-600 mt-2"></p>
+                                <div class="mt-3 bg-white/80 rounded-full h-3 overflow-hidden border border-blue-200">
+                                    <div id="progressBar" class="h-full bg-blue-600 transition-all duration-300" style="width: 0%"></div>
+                                </div>
+                                <div class="flex justify-between items-center mt-2 text-xs text-blue-700">
+                                    <span id="progressBatchText">Batch 0/0</span>
+                                    <span id="progressPercent">0%</span>
+                                </div>
                             </div>
                         </div>
 
@@ -229,7 +245,327 @@
         const resultContainer = document.getElementById('resultContainer');
         const previewBtn = document.getElementById('previewBtn');
         const migrateBtn = document.getElementById('migrateBtn');
+        const retryMigrateBtn = document.getElementById('retryMigrateBtn');
+        const cancelMigrateBtn = document.getElementById('cancelMigrateBtn');
         const currentNewsCountEl = document.getElementById('currentNewsCount');
+        const progressTextEl = document.getElementById('progressText');
+        const progressBarEl = document.getElementById('progressBar');
+        const progressBatchTextEl = document.getElementById('progressBatchText');
+        const progressPercentEl = document.getElementById('progressPercent');
+        let shouldRetryExisting = false;
+        let cancelRequested = false;
+        let isMigrationRunning = false;
+        const BATCH_SIZE = 10;
+
+        /**
+         * สร้างส่วนแสดงรายละเอียดไฟล์ที่ผิดพลาด
+         * @param {Object} aggregate - ข้อมูลรวมจาก migration
+         * @returns {string} HTML string
+         */
+        const generateFileErrorsSection = (aggregate) => {
+            const hasImageErrors = aggregate.imageErrorDetails && aggregate.imageErrorDetails.length > 0;
+            const hasAttachmentErrors = aggregate.attachmentErrorDetails && aggregate.attachmentErrorDetails.length > 0;
+            
+            if (!hasImageErrors && !hasAttachmentErrors) {
+                return ''; // ไม่มีข้อผิดพลาด ไม่ต้องแสดงอะไร
+            }
+
+            // รวมรายการ Article IDs ที่มีปัญหา (สำหรับปุ่ม Retry)
+            const failedArticleIds = new Set();
+            if (hasImageErrors) {
+                aggregate.imageErrorDetails.forEach(item => failedArticleIds.add(item.articleId));
+            }
+            if (hasAttachmentErrors) {
+                aggregate.attachmentErrorDetails.forEach(item => failedArticleIds.add(item.articleId));
+            }
+
+            // สร้างรายการรูปภาพที่ผิดพลาด
+            const imageErrorRows = hasImageErrors ? aggregate.imageErrorDetails.flatMap(item => 
+                item.errors.map(err => `
+                    <tr class="hover:bg-blue-50">
+                        <td class="py-2 px-3 border-b text-sm">${item.articleId}</td>
+                        <td class="py-2 px-3 border-b text-sm">${item.articleTitle}</td>
+                        <td class="py-2 px-3 border-b text-xs text-gray-600 font-mono">${err.path}</td>
+                        <td class="py-2 px-3 border-b text-xs text-red-600">${err.error}</td>
+                    </tr>
+                `)
+            ).join('') : '';
+
+            // สร้างรายการไฟล์แนบที่ผิดพลาด
+            const attachmentErrorRows = hasAttachmentErrors ? aggregate.attachmentErrorDetails.flatMap(item => 
+                item.errors.map(err => `
+                    <tr class="hover:bg-purple-50">
+                        <td class="py-2 px-3 border-b text-sm">${item.articleId}</td>
+                        <td class="py-2 px-3 border-b text-sm">${item.articleTitle}</td>
+                        <td class="py-2 px-3 border-b text-xs text-gray-600 font-mono">${err.path}</td>
+                        <td class="py-2 px-3 border-b text-xs text-red-600">${err.error}</td>
+                    </tr>
+                `)
+            ).join('') : '';
+
+            return `
+                <div class="bg-red-50 border-l-4 border-red-500 p-6 rounded mt-6">
+                    <h5 class="font-bold text-red-800 text-lg mb-3">⚠️ รายละเอียดไฟล์ที่ผิดพลาด</h5>
+                    
+                    <!-- ปุ่มควบคุม -->
+                    <div class="flex gap-3 mb-4">
+                        <button onclick="downloadErrorsAsCsv()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm font-semibold flex items-center gap-2">
+                            📥 ดาวน์โหลดรายการเป็น CSV
+                        </button>
+                        <button onclick="retryFailedArticles([${Array.from(failedArticleIds).join(',')}])" class="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded text-sm font-semibold flex items-center gap-2">
+                            🔄 Retry เฉพาะบทความที่มีปัญหา (${failedArticleIds.size} รายการ)
+                        </button>
+                    </div>
+
+                    ${hasImageErrors ? `
+                        <div class="mb-6">
+                            <h6 class="font-bold text-blue-800 mb-2">🖼️ รูปภาพที่ผิดพลาด (${aggregate.imageErrors} ไฟล์)</h6>
+                            <div class="bg-white rounded-lg overflow-hidden border border-blue-200 max-h-96 overflow-y-auto">
+                                <table class="w-full text-left">
+                                    <thead class="bg-blue-100 sticky top-0">
+                                        <tr>
+                                            <th class="py-2 px-3 font-semibold text-blue-900 text-sm">Article ID</th>
+                                            <th class="py-2 px-3 font-semibold text-blue-900 text-sm">ชื่อบทความ</th>
+                                            <th class="py-2 px-3 font-semibold text-blue-900 text-sm">Path ไฟล์</th>
+                                            <th class="py-2 px-3 font-semibold text-blue-900 text-sm">สาเหตุ</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${imageErrorRows}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    ` : ''}
+
+                    ${hasAttachmentErrors ? `
+                        <div>
+                            <h6 class="font-bold text-purple-800 mb-2">📎 ไฟล์แนบที่ผิดพลาด (${aggregate.attachmentErrors} ไฟล์)</h6>
+                            <div class="bg-white rounded-lg overflow-hidden border border-purple-200 max-h-96 overflow-y-auto">
+                                <table class="w-full text-left">
+                                    <thead class="bg-purple-100 sticky top-0">
+                                        <tr>
+                                            <th class="py-2 px-3 font-semibold text-purple-900 text-sm">Article ID</th>
+                                            <th class="py-2 px-3 font-semibold text-purple-900 text-sm">ชื่อบทความ</th>
+                                            <th class="py-2 px-3 font-semibold text-purple-900 text-sm">Path ไฟล์</th>
+                                            <th class="py-2 px-3 font-semibold text-purple-900 text-sm">สาเหตุ</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${attachmentErrorRows}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    ` : ''}
+
+                    <div class="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded">
+                        <p class="text-sm text-yellow-800">
+                            <strong>💡 แนะนำ:</strong> ตรวจสอบว่าไฟล์เหล่านี้มีอยู่ในเซิร์ฟเวอร์ Joomla เดิมหรือไม่ หากไม่มีอาจต้องหาไฟล์สำรองหรือติดต่อผู้ดูแลระบบเดิม
+                        </p>
+                    </div>
+
+                    <div id="csvDownloadData" data-image-errors='${JSON.stringify(aggregate.imageErrorDetails || [])}' data-attachment-errors='${JSON.stringify(aggregate.attachmentErrorDetails || [])}' class="hidden"></div>
+                </div>
+            `;
+        };
+
+        /**
+         * ดาวน์โหลดรายการไฟล์ที่ผิดพลาดเป็น CSV
+         */
+        const downloadErrorsAsCsv = () => {
+            const dataEl = document.getElementById('csvDownloadData');
+            if (!dataEl) return;
+
+            const imageErrors = JSON.parse(dataEl.getAttribute('data-image-errors') || '[]');
+            const attachmentErrors = JSON.parse(dataEl.getAttribute('data-attachment-errors') || '[]');
+
+            // สร้าง CSV content
+            const csvRows = [];
+            csvRows.push('Type,Article ID,Article Title,File Path,Error,Details');
+
+            // เพิ่มข้อมูลรูปภาพ
+            imageErrors.forEach(item => {
+                item.errors.forEach(err => {
+                    csvRows.push(`"Image","${item.articleId}","${item.articleTitle.replace(/"/g, '""')}","${err.path}","${err.error}","${err.details || ''}"`);
+                });
+            });
+
+            // เพิ่มข้อมูลไฟล์แนบ
+            attachmentErrors.forEach(item => {
+                item.errors.forEach(err => {
+                    csvRows.push(`"Attachment","${item.articleId}","${item.articleTitle.replace(/"/g, '""')}","${err.path}","${err.error}","${err.details || ''}"`);
+                });
+            });
+
+            // สร้าง Blob และดาวน์โหลด
+            const csvContent = csvRows.join('\\n');
+            const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').substring(0, 19);
+            
+            link.setAttribute('href', url);
+            link.setAttribute('download', `migration_errors_${timestamp}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        };
+
+        /**
+         * Retry เฉพาะบทความที่มีไฟล์ผิดพลาด
+         * @param {Array<number>} articleIds - รายการ Article IDs
+         */
+        const retryFailedArticles = async (articleIds) => {
+            if (!articleIds || articleIds.length === 0) {
+                alert('ไม่มี Article IDs ที่ต้อง retry');
+                return;
+            }
+
+            if (!confirm(`ต้องการ Retry ${articleIds.length} รายการที่มีไฟล์ผิดพลาดหรือไม่?`)) {
+                return;
+            }
+
+            const categoryName = document.getElementById('categoryName').value;
+            const destinationMenu = document.getElementById('destinationMenu').value;
+
+            progressContainer.classList.remove('hidden');
+            previewContainer.classList.add('hidden');
+            resultContainer.classList.add('hidden');
+            setButtonsDisabled(true);
+            updateProgressUi(0, articleIds.length, 1, 1, 'กำลัง Retry บทความที่มีไฟล์ผิดพลาด...');
+
+            try {
+                const response = await fetch('/admin/migration/news', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        categoryName,
+                        destinationMenu,
+                        retryExisting: true,
+                        articleIds: articleIds,
+                        limit: articleIds.length,
+                        offset: 0
+                    })
+                });
+
+                const result = await response.json();
+                progressContainer.classList.add('hidden');
+                resultContainer.classList.remove('hidden');
+
+                if (!result.success) {
+                    resultContainer.innerHTML = `
+                        <div class="bg-red-50 border-l-4 border-red-500 p-6 rounded">
+                            <h5 class="font-bold text-red-800 text-lg mb-2">❌ Retry ล้มเหลว</h5>
+                            <p class="text-red-700">${result.message || 'ไม่สามารถ retry ได้'}</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                const stats = result.statistics || {};
+                const hasNewImageErrors = result.imageDetails && result.imageDetails.imageErrors && result.imageDetails.imageErrors.length > 0;
+                const hasNewAttachmentErrors = result.attachmentDetails && result.attachmentDetails.attachmentErrors && result.attachmentDetails.attachmentErrors.length > 0;
+
+                resultContainer.innerHTML = `
+                    <div class="bg-green-50 border-l-4 border-green-500 p-6 rounded">
+                        <h5 class="font-bold text-green-800 text-lg mb-3">✅ Retry สำเร็จ!</h5>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                            <div class="bg-white p-4 rounded shadow">
+                                <p class="text-sm text-gray-600">ประมวลผล:</p>
+                                <p class="text-2xl font-bold text-blue-600">${stats.totalProcessed || 0}</p>
+                            </div>
+                            <div class="bg-white p-4 rounded shadow">
+                                <p class="text-sm text-gray-600">อัปเดต:</p>
+                                <p class="text-2xl font-bold text-indigo-600">${stats.updatedCount || 0}</p>
+                            </div>
+                            <div class="bg-white p-4 rounded shadow">
+                                <p class="text-sm text-gray-600">รูปภาพ:</p>
+                                <p class="text-lg font-bold ${stats.imageErrors > 0 ? 'text-red-600' : 'text-green-600'}">
+                                    ${stats.imagesCopied || 0} ✓ / ${stats.imageErrors || 0} ✗
+                                </p>
+                            </div>
+                            <div class="bg-white p-4 rounded shadow">
+                                <p class="text-sm text-gray-600">ไฟล์แนบ:</p>
+                                <p class="text-lg font-bold ${stats.attachmentErrors > 0 ? 'text-red-600' : 'text-green-600'}">
+                                    ${stats.attachmentsCopied || 0} ✓ / ${stats.attachmentErrors || 0} ✗
+                                </p>
+                            </div>
+                        </div>
+                        <p class="text-sm text-green-700">
+                            ${stats.imageErrors > 0 || stats.attachmentErrors > 0 ? 
+                                'ยังคงมีไฟล์ที่คัดลอกไม่สำเร็จ อาจเป็นเพราะไฟล์ไม่มีอยู่จริงในระบบ Joomla เดิม' : 
+                                'คัดลอกไฟล์ทั้งหมดสำเร็จ!'}
+                        </p>
+                    </div>
+
+                    ${hasNewImageErrors || hasNewAttachmentErrors ? generateFileErrorsSection({
+                        imageErrors: stats.imageErrors || 0,
+                        imageErrorDetails: result.imageDetails.imageErrors || [],
+                        attachmentErrors: stats.attachmentErrors || 0,
+                        attachmentErrorDetails: result.attachmentDetails.attachmentErrors || []
+                    }) : ''}
+                `;
+
+            } catch (error) {
+                progressContainer.classList.add('hidden');
+                resultContainer.classList.remove('hidden');
+                resultContainer.innerHTML = `
+                    <div class="bg-red-50 border-l-4 border-red-500 p-6 rounded">
+                        <h5 class="font-bold text-red-800 text-lg mb-2">❌ เกิดข้อผิดพลาด</h5>
+                        <p class="text-red-700">ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้</p>
+                        <p class="text-sm text-red-600 mt-2">${error.message}</p>
+                    </div>
+                `;
+            } finally {
+                setButtonsDisabled(false);
+            }
+        };
+
+        const setButtonsDisabled = (disabled) => {
+            previewBtn.disabled = disabled;
+            migrateBtn.disabled = disabled;
+            retryMigrateBtn.disabled = disabled;
+
+            const method = disabled ? 'add' : 'remove';
+            previewBtn.classList[method]('opacity-50', 'cursor-not-allowed');
+            migrateBtn.classList[method]('opacity-50', 'cursor-not-allowed');
+            retryMigrateBtn.classList[method]('opacity-50', 'cursor-not-allowed');
+        };
+
+        const updateProgressUi = (processedItems, totalItems, batchIndex, totalBatches, message = '') => {
+            const safeTotal = Math.max(totalItems, 1);
+            const percent = Math.min(100, Math.round((processedItems / safeTotal) * 100));
+            progressBarEl.style.width = `${percent}%`;
+            progressPercentEl.textContent = `${percent}%`;
+            progressBatchTextEl.textContent = `Batch ${batchIndex}/${totalBatches}`;
+            progressTextEl.textContent = message || `กำลังประมวลผล ${processedItems}/${totalItems} รายการ`;
+        };
+
+        const setCancelButtonState = (enabled) => {
+            cancelMigrateBtn.disabled = !enabled;
+            if (enabled) {
+                cancelMigrateBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            } else {
+                cancelMigrateBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            }
+        };
+
+        cancelMigrateBtn.addEventListener('click', () => {
+            if (!isMigrationRunning) return;
+            cancelRequested = true;
+            progressTextEl.textContent = '⏹️ กำลังหยุดงาน... ระบบจะหยุดหลังจบ Batch ปัจจุบัน';
+            cancelMigrateBtn.disabled = true;
+            cancelMigrateBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        });
+
+        retryMigrateBtn.addEventListener('click', () => {
+            shouldRetryExisting = true;
+            migrationForm.requestSubmit();
+        });
 
         previewBtn.addEventListener('click', async () => {
             const formData = new FormData(migrationForm);
@@ -245,10 +581,8 @@
             previewContainer.innerHTML = '';
             resultContainer.classList.add('hidden');
             resultContainer.innerHTML = '';
-            previewBtn.disabled = true;
-            migrateBtn.disabled = true;
-            previewBtn.classList.add('opacity-50', 'cursor-not-allowed');
-            migrateBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            setButtonsDisabled(true);
+            updateProgressUi(0, 1, 0, 0, 'กำลังเตรียม Preview...');
 
             try {
                 const response = await fetch('/admin/migration/news/preview', {
@@ -324,10 +658,7 @@
                     </div>
                 `;
             } finally {
-                previewBtn.disabled = false;
-                migrateBtn.disabled = false;
-                previewBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-                migrateBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                setButtonsDisabled(false);
             }
         });
 
@@ -335,11 +666,44 @@
             e.preventDefault();
             
             const formData = new FormData(migrationForm);
-            const data = {
+            const totalLimit = parseInt(formData.get('limit')) || 0;
+            const startOffset = parseInt(formData.get('offset')) || 0;
+            const baseData = {
                 categoryName: formData.get('categoryName'),
                 destinationMenu: formData.get('destinationMenu'),
-                limit: parseInt(formData.get('limit')),
-                offset: parseInt(formData.get('offset')) || 0
+                retryExisting: shouldRetryExisting
+            };
+
+            if (totalLimit <= 0) {
+                resultContainer.classList.remove('hidden');
+                resultContainer.innerHTML = `
+                    <div class="bg-red-50 border-l-4 border-red-500 p-6 rounded">
+                        <h5 class="font-bold text-red-800 text-lg mb-2">❌ ข้อมูลไม่ถูกต้อง</h5>
+                        <p class="text-red-700">กรุณาระบุจำนวนที่ต้องการ Migrate มากกว่า 0</p>
+                    </div>
+                `;
+                shouldRetryExisting = false;
+                return;
+            }
+
+            const totalBatches = Math.ceil(totalLimit / BATCH_SIZE);
+            let processedItems = 0;
+            let completedBatches = 0;
+
+            const aggregate = {
+                totalProcessed: 0,
+                successCount: 0,
+                updatedCount: 0,
+                skippedCount: 0,
+                errorCount: 0,
+                imagesCopied: 0,
+                imageErrors: 0,
+                attachmentsCopied: 0,
+                attachmentErrors: 0,
+                errors: [],
+                destinationCategory: '-',
+                imageErrorDetails: [],
+                attachmentErrorDetails: []
             };
 
             // Show progress
@@ -348,47 +712,142 @@
             previewContainer.innerHTML = '';
             resultContainer.classList.add('hidden');
             resultContainer.innerHTML = '';
-            previewBtn.disabled = true;
-            migrateBtn.disabled = true;
-            previewBtn.classList.add('opacity-50', 'cursor-not-allowed');
-            migrateBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            setButtonsDisabled(true);
+            setCancelButtonState(true);
+            cancelRequested = false;
+            isMigrationRunning = true;
+            updateProgressUi(0, totalLimit, 0, totalBatches, `เริ่มทำงานแบบ Batch ละ ${BATCH_SIZE} รายการ`);
 
             try {
-                const response = await fetch('/admin/migration/news', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(data)
-                });
+                for (let batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
+                    if (cancelRequested) {
+                        break;
+                    }
 
-                const result = await response.json();
+                    const remaining = totalLimit - processedItems;
+                    const currentBatchLimit = Math.min(BATCH_SIZE, remaining);
+                    const currentOffset = startOffset + processedItems;
+
+                    updateProgressUi(
+                        processedItems,
+                        totalLimit,
+                        batchIndex + 1,
+                        totalBatches,
+                        `กำลังรัน Batch ${batchIndex + 1}/${totalBatches} (offset: ${currentOffset}, limit: ${currentBatchLimit})`
+                    );
+
+                    const response = await fetch('/admin/migration/news', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            ...baseData,
+                            limit: currentBatchLimit,
+                            offset: currentOffset
+                        })
+                    });
+
+                    const batchResult = await response.json();
+
+                    if (!batchResult.success) {
+                        throw new Error(batchResult.message || `Batch ${batchIndex + 1} failed`);
+                    }
+
+                    const stats = batchResult.statistics || {};
+                    aggregate.totalProcessed += stats.totalProcessed || 0;
+                    aggregate.successCount += stats.successCount || 0;
+                    aggregate.updatedCount += stats.updatedCount || 0;
+                    aggregate.skippedCount += stats.skippedCount || 0;
+                    aggregate.errorCount += stats.errorCount || 0;
+                    aggregate.imagesCopied += stats.imagesCopied || 0;
+                    aggregate.imageErrors += stats.imageErrors || 0;
+                    aggregate.attachmentsCopied += stats.attachmentsCopied || 0;
+                    aggregate.attachmentErrors += stats.attachmentErrors || 0;
+                    aggregate.destinationCategory = stats.destinationCategory || aggregate.destinationCategory;
+
+                    if (Array.isArray(stats.errors) && stats.errors.length > 0) {
+                        aggregate.errors.push(...stats.errors);
+                    }
+
+                    // เก็บรายละเอียดไฟล์ที่ผิดพลาด
+                    if (batchResult.imageDetails && Array.isArray(batchResult.imageDetails.imageErrors)) {
+                        aggregate.imageErrorDetails.push(...batchResult.imageDetails.imageErrors);
+                    }
+                    if (batchResult.attachmentDetails && Array.isArray(batchResult.attachmentDetails.attachmentErrors)) {
+                        aggregate.attachmentErrorDetails.push(...batchResult.attachmentDetails.attachmentErrors);
+                    }
+
+                    processedItems += currentBatchLimit;
+                    completedBatches = batchIndex + 1;
+                    updateProgressUi(
+                        processedItems,
+                        totalLimit,
+                        batchIndex + 1,
+                        totalBatches,
+                        `สำเร็จ Batch ${batchIndex + 1}/${totalBatches} (${processedItems}/${totalLimit} รายการ)`
+                    );
+                }
 
                 // Hide progress
                 progressContainer.classList.add('hidden');
                 resultContainer.classList.remove('hidden');
 
-                if (result.success) {
-                    // Success message
+                if (cancelRequested) {
                     resultContainer.innerHTML = `
-                        <div class="bg-green-50 border-l-4 border-green-500 p-6 rounded">
-                            <h5 class="font-bold text-green-800 text-lg mb-3">✅ Migration สำเร็จ!</h5>
+                        <div class="bg-yellow-50 border-l-4 border-yellow-500 p-6 rounded">
+                            <h5 class="font-bold text-yellow-800 text-lg mb-3">⏹️ หยุดงานแล้ว</h5>
+                            <p class="text-yellow-700 mb-3">ระบบหยุดหลังจบ Batch ปัจจุบันเรียบร้อย</p>
                             <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                                 <div class="bg-white p-4 rounded shadow">
-                                    <p class="text-sm text-gray-600">ประมวลผล:</p>
-                                    <p class="text-2xl font-bold text-blue-600">${result.statistics.totalProcessed}</p>
+                                    <p class="text-sm text-gray-600">ทำแล้ว:</p>
+                                    <p class="text-2xl font-bold text-blue-600">${processedItems}/${totalLimit}</p>
                                 </div>
                                 <div class="bg-white p-4 rounded shadow">
-                                    <p class="text-sm text-gray-600">สำเร็จ:</p>
-                                    <p class="text-2xl font-bold text-green-600">${result.statistics.successCount}</p>
+                                    <p class="text-sm text-gray-600">Batch:</p>
+                                    <p class="text-2xl font-bold text-indigo-600">${completedBatches}/${totalBatches}</p>
+                                </div>
+                                <div class="bg-white p-4 rounded shadow">
+                                    <p class="text-sm text-gray-600">เพิ่มใหม่:</p>
+                                    <p class="text-2xl font-bold text-green-600">${aggregate.successCount}</p>
+                                </div>
+                                <div class="bg-white p-4 rounded shadow">
+                                    <p class="text-sm text-gray-600">อัปเดต:</p>
+                                    <p class="text-2xl font-bold text-indigo-600">${aggregate.updatedCount || 0}</p>
+                                </div>
+                            </div>
+                            <p class="text-sm text-yellow-700">สามารถกดเริ่มใหม่ต่อจาก offset เดิมหรือ offset ถัดไปได้ทันที</p>
+                        </div>
+                    `;
+
+                    const currentCountStopped = parseInt((currentNewsCountEl.textContent || '0').replace(/[^0-9]/g, ''), 10) || 0;
+                    currentNewsCountEl.textContent = `${currentCountStopped + aggregate.successCount} รายการ`;
+                    return;
+                }
+
+                resultContainer.innerHTML = `
+                        <div class="bg-green-50 border-l-4 border-green-500 p-6 rounded">
+                            <h5 class="font-bold text-green-800 text-lg mb-3">✅ Batch Migration สำเร็จ!</h5>
+                            <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-4">
+                                <div class="bg-white p-4 rounded shadow">
+                                    <p class="text-sm text-gray-600">ประมวลผล:</p>
+                                    <p class="text-2xl font-bold text-blue-600">${aggregate.totalProcessed}</p>
+                                </div>
+                                <div class="bg-white p-4 rounded shadow">
+                                    <p class="text-sm text-gray-600">เพิ่มใหม่:</p>
+                                    <p class="text-2xl font-bold text-green-600">${aggregate.successCount}</p>
+                                </div>
+                                <div class="bg-white p-4 rounded shadow">
+                                    <p class="text-sm text-gray-600">อัปเดต:</p>
+                                    <p class="text-2xl font-bold text-indigo-600">${aggregate.updatedCount || 0}</p>
                                 </div>
                                 <div class="bg-white p-4 rounded shadow">
                                     <p class="text-sm text-gray-600">ข้าม (ซ้ำ):</p>
-                                    <p class="text-2xl font-bold text-yellow-600">${result.statistics.skippedCount || 0}</p>
+                                    <p class="text-2xl font-bold text-yellow-600">${aggregate.skippedCount || 0}</p>
                                 </div>
                                 <div class="bg-white p-4 rounded shadow">
                                     <p class="text-sm text-gray-600">ผิดพลาด:</p>
-                                    <p class="text-2xl font-bold text-red-600">${result.statistics.errorCount}</p>
+                                    <p class="text-2xl font-bold text-red-600">${aggregate.errorCount}</p>
                                 </div>
                             </div>
                             
@@ -398,56 +857,48 @@
                                     <h6 class="font-bold text-blue-800 mb-2">🖼️ รูปภาพ</h6>
                                     <div class="flex justify-between items-center">
                                         <span class="text-sm text-blue-700">คัดลอกสำเร็จ:</span>
-                                        <span class="text-xl font-bold text-green-600">${result.statistics.imagesCopied || 0} ไฟล์</span>
+                                        <span class="text-xl font-bold text-green-600">${aggregate.imagesCopied || 0} ไฟล์</span>
                                     </div>
                                     <div class="flex justify-between items-center mt-1">
                                         <span class="text-sm text-blue-700">ผิดพลาด:</span>
-                                        <span class="text-xl font-bold text-red-600">${result.statistics.imageErrors || 0} ไฟล์</span>
+                                        <span class="text-xl font-bold text-red-600">${aggregate.imageErrors || 0} ไฟล์</span>
                                     </div>
                                 </div>
                                 <div class="bg-purple-50 border-2 border-purple-200 p-4 rounded-lg">
                                     <h6 class="font-bold text-purple-800 mb-2">📎 ไฟล์แนบ (PDF/JPG)</h6>
                                     <div class="flex justify-between items-center">
                                         <span class="text-sm text-purple-700">คัดลอกสำเร็จ:</span>
-                                        <span class="text-xl font-bold text-green-600">${result.statistics.attachmentsCopied || 0} ไฟล์</span>
+                                        <span class="text-xl font-bold text-green-600">${aggregate.attachmentsCopied || 0} ไฟล์</span>
                                     </div>
                                     <div class="flex justify-between items-center mt-1">
                                         <span class="text-sm text-purple-700">ผิดพลาด:</span>
-                                        <span class="text-xl font-bold text-red-600">${result.statistics.attachmentErrors || 0} ไฟล์</span>
+                                        <span class="text-xl font-bold text-red-600">${aggregate.attachmentErrors || 0} ไฟล์</span>
                                     </div>
                                 </div>
                             </div>
 
                             <p class="text-sm text-green-700 mb-2">
-                                Destination: <span class="font-semibold">${result.statistics.destinationCategory || '-'}</span>
+                                Destination: <span class="font-semibold">${aggregate.destinationCategory || '-'}</span>
                             </p>
-                            <p class="text-green-700">${result.message}</p>
-                            ${result.statistics.errors.length > 0 ? `
+                            <p class="text-green-700">Batch migration completed: ${aggregate.successCount} created, ${aggregate.updatedCount} updated, ${aggregate.skippedCount} skipped, ${aggregate.errorCount} errors | Images: ${aggregate.imagesCopied} copied, ${aggregate.imageErrors} errors | Attachments: ${aggregate.attachmentsCopied} copied, ${aggregate.attachmentErrors} errors</p>
+                            ${aggregate.errors.length > 0 ? `
                                 <div class="mt-4">
                                     <p class="font-semibold text-red-700 mb-2">รายการที่มีข้อผิดพลาด:</p>
                                     <ul class="list-disc list-inside text-sm text-red-600 space-y-1">
-                                        ${result.statistics.errors.map(err => `
+                                        ${aggregate.errors.map(err => `
                                             <li>${err.title}: ${err.error}</li>
                                         `).join('')}
                                     </ul>
                                 </div>
                             ` : ''}
                         </div>
+                        
+                        ${generateFileErrorsSection(aggregate)}
                     `;
 
-                    // Update current news count
-                    const newCount = parseInt(currentNewsCountEl.textContent) + result.statistics.successCount;
-                    currentNewsCountEl.textContent = newCount + ' รายการ';
-                } else {
-                    // Error message
-                    resultContainer.innerHTML = `
-                        <div class="bg-red-50 border-l-4 border-red-500 p-6 rounded">
-                            <h5 class="font-bold text-red-800 text-lg mb-2">❌ Migration ล้มเหลว</h5>
-                            <p class="text-red-700">${result.message}</p>
-                            ${result.error ? `<p class="text-sm text-red-600 mt-2">Error: ${result.error}</p>` : ''}
-                        </div>
-                    `;
-                }
+                // Update current news count (เฉพาะรายการที่สร้างใหม่)
+                const currentCount = parseInt((currentNewsCountEl.textContent || '0').replace(/[^0-9]/g, ''), 10) || 0;
+                currentNewsCountEl.textContent = `${currentCount + aggregate.successCount} รายการ`;
             } catch (error) {
                 progressContainer.classList.add('hidden');
                 resultContainer.classList.remove('hidden');
@@ -459,10 +910,11 @@
                     </div>
                 `;
             } finally {
-                previewBtn.disabled = false;
-                migrateBtn.disabled = false;
-                previewBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-                migrateBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                isMigrationRunning = false;
+                cancelRequested = false;
+                setCancelButtonState(false);
+                setButtonsDisabled(false);
+                shouldRetryExisting = false;
             }
         });
     </script>

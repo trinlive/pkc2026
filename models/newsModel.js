@@ -118,6 +118,20 @@ const News = {
         }
     },
 
+    // หาข่าวที่ migrate มาจาก Joomla article เดิม
+    getByMigrationSource: async (joomlaArticleId) => {
+        try {
+            const [rows] = await db.query(
+                'SELECT * FROM news WHERE created_by = ? LIMIT 1',
+                [`joomla:${joomlaArticleId}`]
+            );
+            return rows[0] || null;
+        } catch (error) {
+            console.error('Error fetching news by migration source:', error);
+            return null;
+        }
+    },
+
     // สร้างข่าวใหม่
     create: async (title, description, image_url, attachment_url, news_category, date_posted, is_published, created_by) => {
         try {
@@ -142,6 +156,20 @@ const News = {
             return result;
         } catch (error) {
             console.error('Error updating news:', error);
+            throw error;
+        }
+    },
+
+    // อัพเดทฟิลด์หลักจากงาน migration (ไม่แตะสถานะ publish/featured)
+    updateMigratedFields: async (id, description, image_url, attachment_url) => {
+        try {
+            const [result] = await db.query(
+                'UPDATE news SET description = ?, image_url = ?, attachment_url = ? WHERE id = ?',
+                [description, image_url, attachment_url, id]
+            );
+            return result;
+        } catch (error) {
+            console.error('Error updating migrated news fields:', error);
             throw error;
         }
     },
