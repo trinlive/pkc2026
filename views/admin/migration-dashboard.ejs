@@ -102,7 +102,8 @@
                             </ul>
                             <p class="mt-3"><strong>3️⃣ ขั้นตอนที่สาม:</strong> กด "เริ่ม Migration" เพื่อ migrate จริง</p>
                             <ul class="ml-4 space-y-1 text-gray-600">
-                                <li>• ระบบจะคัดลอกข่าว รูปภาพ และอัปเดต path อัตโนมัติ</li>
+                                <li>• ระบบจะคัดลอกข้อมูล: <strong>ข่าว</strong>, <strong>รูปภาพ</strong>, <strong>ไฟล์แนบ (PDF/JPG)</strong></li>
+                                <li>• 📎 ไฟล์แนบจะถูกใส่ในช่อง "อ่านรายละเอียด" โดยอัตโนมัติ</li>
                                 <li>• ⏳ รอให้ migration สำเร็จ (ไม่ปิดเบราว์เซอร์)</li>
                             </ul>
                         </div>
@@ -390,6 +391,33 @@
                                     <p class="text-2xl font-bold text-red-600">${result.statistics.errorCount}</p>
                                 </div>
                             </div>
+                            
+                            <!-- 📊 สถิติไฟล์ที่คัดลอก -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                <div class="bg-blue-50 border-2 border-blue-200 p-4 rounded-lg">
+                                    <h6 class="font-bold text-blue-800 mb-2">🖼️ รูปภาพ</h6>
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-sm text-blue-700">คัดลอกสำเร็จ:</span>
+                                        <span class="text-xl font-bold text-green-600">${result.statistics.imagesCopied || 0} ไฟล์</span>
+                                    </div>
+                                    <div class="flex justify-between items-center mt-1">
+                                        <span class="text-sm text-blue-700">ผิดพลาด:</span>
+                                        <span class="text-xl font-bold text-red-600">${result.statistics.imageErrors || 0} ไฟล์</span>
+                                    </div>
+                                </div>
+                                <div class="bg-purple-50 border-2 border-purple-200 p-4 rounded-lg">
+                                    <h6 class="font-bold text-purple-800 mb-2">📎 ไฟล์แนบ (PDF/JPG)</h6>
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-sm text-purple-700">คัดลอกสำเร็จ:</span>
+                                        <span class="text-xl font-bold text-green-600">${result.statistics.attachmentsCopied || 0} ไฟล์</span>
+                                    </div>
+                                    <div class="flex justify-between items-center mt-1">
+                                        <span class="text-sm text-purple-700">ผิดพลาด:</span>
+                                        <span class="text-xl font-bold text-red-600">${result.statistics.attachmentErrors || 0} ไฟล์</span>
+                                    </div>
+                                </div>
+                            </div>
+
                             <p class="text-sm text-green-700 mb-2">
                                 Destination: <span class="font-semibold">${result.statistics.destinationCategory || '-'}</span>
                             </p>

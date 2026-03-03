@@ -245,6 +245,123 @@ const copyThumbnailFromJoomla = async (originalImageUrl, postedDate = null) => {
 };
 
 
+/**
+ * ดึงและคัดลอกไฟล์แนบ (PDF, JPG, PNG) จาก Joomla HTML content
+ * @param {string} htmlContent - HTML ที่มี <a href="...pdf/jpg/png">
+ * @param {Date} postedDate - วันที่ลงข่าวสำหรับสร้าง timestamp
+ * @returns {Promise<{attachmentUrl: string|null, copiedAttachments: Array, errors: Array}>}
+ */
+const extractAndCopyAttachmentsFromJoomla = async (htmlContent, postedDate = null) => {
+    if (!htmlContent) return { attachmentUrl: null, copiedAttachments: [], errors: [] };
+
+    const joomlaBasePath = '/var/www/vhosts/pakkretcity.go.th/httpdocs';
+    const npakkretAttachmentsPath = '/var/www/vhosts/pakkretcity.go.th/n.pakkretcity.go.th/public/uploads/news/attachments';
+    
+    // สร้าง timestamp จากวันที่ลงข่าว
+    const generateTimestamp = (date) => {
+        if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
+            date = new Date();
+        }
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hours = String(date.getHours()).padStart(2, '0');
+        const mins = String(date.getMinutes()).padStart(2, '0');
+        const secs = String(date.getSeconds()).padStart(2, '0');
+        return `${year}${month}${day}_${hours}${mins}${secs}`;
+    };
+
+    const timestamp = generateTimestamp(postedDate);
+    const copiedAttachments = [];
+    const errors = [];
+
+    // Regex เพื่อหา <a href="..."> ที่ชี้ไปยังไฟล์ PDF, JPG, PNG, JPEG
+    // รองรับ: images/pdf/..., /images/pdf/..., https://pakkretcity.go.th/images/...
+    const attachmentPattern = /<a[^>]+href=["']([^"']+\.(pdf|jpg|jpeg|png|PDF|JPG|JPEG|PNG))["'][^>]*>/gi;
+    
+    const foundAttachments = new Set();
+    const matches = htmlContent.matchAll(attachmentPattern);
+    
+    for (const match of matches) {
+        let attachmentUrl = match[1];
+        
+        // ถ้าเป็น full URL ให้แปลงเป็น relative path
+        if (attachmentUrl.includes('pakkretcity.go.th')) {
+            attachmentUrl = attachmentUrl.replace(/^https?:\/\/(www\.)?pakkretcity\.go\.th\/?/i, '');
+        }
+        
+        foundAttachments.add(attachmentUrl);
+    }
+
+    // คัดลอกไฟล์แนบแต่ละอัน
+    let attachmentIndex = 0;
+    let primaryAttachmentUrl = null; // ไฟล์แนบหลักสำหรับปุ่ม "อ่านรายละเอียด"
+
+    for (const attachmentUrl of foundAttachments) {
+        try {
+            // สร้าง source path
+            let relativePath = attachmentUrl;
+            if (relativePath.startsWith('/')) {
+                relativePath = relativePath.substring(1);
+            }
+            
+            const sourcePath = path.join(joomlaBasePath, relativePath);
+            
+            // ดึง extension
+            const fileExt = path.extname(attachmentUrl).toLowerCase();
+            const newFilename = `attachment_${timestamp}_${attachmentIndex}${fileExt}`;
+            const destPath = path.join(npakkretAttachmentsPath, newFilename);
+
+            // เช็คว่าไฟล์ต้นทางมีอยู่จริง
+            try {
+                await fs.access(sourcePath);
+                
+                // สร้างโฟลเดอร์ปลายทางถ้ายังไม่มี
+                await fs.mkdir(npakkretAttachmentsPath, { recursive: true });
+                
+                // คัดลอกไฟล์
+                await fs.copyFile(sourcePath, destPath);
+                
+                const newPath = `/uploads/news/attachments/${newFilename}`;
+                
+                copiedAttachments.push({
+                    original: attachmentUrl,
+                    copied: newPath,
+                    newFilename: newFilename,
+                    fileExt: fileExt
+                });
+
+                // เก็บไฟล์แรกเป็น primary attachment
+                if (!primaryAttachmentUrl) {
+                    primaryAttachmentUrl = newPath;
+                }
+                
+                attachmentIndex++;
+                
+            } catch (accessError) {
+                errors.push({
+                    url: attachmentUrl,
+                    error: 'Source file not found',
+                    details: accessError.message
+                });
+            }
+            
+        } catch (error) {
+            errors.push({
+                url: attachmentUrl,
+                error: 'Copy failed',
+                details: error.message
+            });
+        }
+    }
+
+    return { 
+        attachmentUrl: primaryAttachmentUrl, 
+        copiedAttachments, 
+        errors 
+    };
+};
+
 const mapJoomlaCategoryToNews = (joomlaCategoryName = '') => {
     if (joomlaCategoryName.includes('ข่าว')) return 'ข่าวประชาสัมพันธ์';
     return 'ข่าวประชาสัมพันธ์';
@@ -531,6 +648,7 @@ const adminController = {
         try {
             const { title, description, news_category, date_posted, is_published } = req.body;
             const imageUrl = req.uploadedImage || '';
+            const attachmentUrl = req.uploadedAttachment || '';
 
             if (!title) {
                 const categories = await News.getCategories();
@@ -550,6 +668,7 @@ const adminController = {
                 title,
                 description || '',
                 imageUrl,
+                attachmentUrl,
                 news_category || null,
                 newsDate,
                 is_published ? 1 : 0,
@@ -622,6 +741,7 @@ const adminController = {
             }
 
             const imageUrl = req.uploadedImage || existingNews.image_url;
+            const attachmentUrl = req.uploadedAttachment || existingNews.attachment_url || '';
             const newsDate = date_posted || existingNews.date_posted;
 
             await News.update(
@@ -629,6 +749,7 @@ const adminController = {
                 title,
                 description || '',
                 imageUrl,
+                attachmentUrl,
                 news_category || null,
                 newsDate,
                 is_published ? 1 : 0,
@@ -1035,6 +1156,8 @@ const adminController = {
             const errors = [];
             const allCopiedImages = [];
             const allImageErrors = [];
+            const allCopiedAttachments = [];
+            const allAttachmentErrors = [];
 
             for (const article of articlesToMigrate) {
                 try {
@@ -1085,6 +1208,15 @@ const adminController = {
                         finalImageUrl = await copyThumbnailFromJoomla(imageUrl, postedDate);
                     }
 
+                    // 📎 ดึงและคัดลอกไฟล์แนบ (PDF, JPG, PNG) จาก HTML content
+                    const attachmentResult = await extractAndCopyAttachmentsFromJoomla(rawDescription, postedDate);
+                    let finalAttachmentUrl = attachmentResult.attachmentUrl || null;
+
+                    // 🔄 ถ้าไม่มีไฟล์แนบจาก HTML ให้ใช้รูปหัวข้อข่าวแทน (เพื่อให้ปุ่ม "อ่านรายละเอียด" ใช้งานได้)
+                    if (!finalAttachmentUrl && finalImageUrl) {
+                        finalAttachmentUrl = finalImageUrl;
+                    }
+
                     // เก็บสถิติการคัดลอกรูป
                     if (imageCopyResult.copiedImages.length > 0) {
                         allCopiedImages.push({
@@ -1100,11 +1232,28 @@ const adminController = {
                             errors: imageCopyResult.errors
                         });
                     }
+
+                    // เก็บสถิติการคัดลอกไฟล์แนบ
+                    if (attachmentResult.copiedAttachments.length > 0) {
+                        allCopiedAttachments.push({
+                            articleId: article.id,
+                            articleTitle: article.title,
+                            attachments: attachmentResult.copiedAttachments
+                        });
+                    }
+                    if (attachmentResult.errors.length > 0) {
+                        allAttachmentErrors.push({
+                            articleId: article.id,
+                            articleTitle: article.title,
+                            errors: attachmentResult.errors
+                        });
+                    }
                     
                     await News.create(
                         article.title,
                         finalDescription, // ใช้ content ที่แก้ไข path แล้ว
                         finalImageUrl,    // ใช้ image URL ที่ชี้ไปยัง destination
+                        finalAttachmentUrl, // ไฟล์แนบสำหรับปุ่ม "อ่านรายละเอียด"
                         newsCategory,
                         postedDate,
                         1, // is_published
@@ -1123,13 +1272,15 @@ const adminController = {
                 }
             }
 
-            // คำนวณสถิติรูปภาพ
+            // คำนวณสถิติรูปภาพและไฟล์แนบ
             const totalImagesCopied = allCopiedImages.reduce((sum, item) => sum + item.images.length, 0);
             const totalImageErrors = allImageErrors.reduce((sum, item) => sum + item.errors.length, 0);
+            const totalAttachmentsCopied = allCopiedAttachments.reduce((sum, item) => sum + item.attachments.length, 0);
+            const totalAttachmentErrors = allAttachmentErrors.reduce((sum, item) => sum + item.errors.length, 0);
 
             res.json({
                 success: true,
-                message: `Migration completed: ${successCount} success, ${skippedCount} skipped, ${errorCount} errors | Images: ${totalImagesCopied} copied, ${totalImageErrors} errors`,
+                message: `Migration completed: ${successCount} success, ${skippedCount} skipped, ${errorCount} errors | Images: ${totalImagesCopied} copied, ${totalImageErrors} errors | Attachments: ${totalAttachmentsCopied} copied, ${totalAttachmentErrors} errors`,
                 statistics: {
                     totalProcessed: articlesToMigrate.length,
                     successCount,
@@ -1139,11 +1290,17 @@ const adminController = {
                     destinationMenu,
                     destinationCategory: resolveDestinationCategory(destinationMenu, categoryName),
                     imagesCopied: totalImagesCopied,
-                    imageErrors: totalImageErrors
+                    imageErrors: totalImageErrors,
+                    attachmentsCopied: totalAttachmentsCopied,
+                    attachmentErrors: totalAttachmentErrors
                 },
                 imageDetails: {
                     copiedImages: allCopiedImages,
                     imageErrors: allImageErrors
+                },
+                attachmentDetails: {
+                    copiedAttachments: allCopiedAttachments,
+                    attachmentErrors: allAttachmentErrors
                 }
             });
 

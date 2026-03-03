@@ -1,9 +1,9 @@
--- สร้างตาราง news สำหรับจัดการข่าวประชาสัมพันธ์
 CREATE TABLE IF NOT EXISTS `news` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `title` varchar(500) NOT NULL COMMENT 'หัวข้อข่าว',
   `description` longtext COMMENT 'รายละเอียดข่าว/ข้อความประชาสัมพันธ์',
   `image_url` varchar(1000) DEFAULT NULL COMMENT 'URL รูปภาพหัวข้อข่าว',
+  `attachment_url` varchar(1000) DEFAULT NULL COMMENT 'ไฟล์แนบสำหรับปุ่มอ่านรายละเอียด (PDF/JPG)',
   `news_category` varchar(100) DEFAULT NULL COMMENT 'หมวดหมู่ข่าว (ข่าวประชาสัมพันธ์, ติดตามการบริหาร, เก็บเงิน, บริการประชาชน ฯลฯ)',
   `date_posted` datetime DEFAULT CURRENT_TIMESTAMP COMMENT 'วันที่ลงข่าว',
   `date_updated` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'วันที่แก้ไข',

@@ -17,6 +17,7 @@
                 const badgeText = news.is_featured ? 'ด่วนที่สุด' : (news.news_category || 'ข่าวประชาสัมพันธ์');
                 const badgeClass = news.is_featured ? 'bg-red-600' : 'bg-blue-600';
                 const sourceImageUrl = news.image_preview_url || news.image_url;
+                const detailUrl = news.attachment_url || '#';
                 let imageUrl = 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?q=80&w=600&auto=format&fit=crop';
                 if (sourceImageUrl) {
                     try {
@@ -36,12 +37,13 @@
                     }
                 }
                 
-                // Strip HTML tags from description for preview
+                // Strip HTML tags and Joomla shortcodes from description for preview
                 const stripHtml = (html) => {
                     if (!html) return '';
                     return String(html)
-                        .replace(/<[^>]*>/g, ' ')
-                        .replace(/\s+/g, ' ')
+                        .replace(/<[^>]*>/g, ' ')           // Remove HTML tags
+                        .replace(/\{[^}]*\}/g, ' ')         // Remove Joomla shortcodes {pdfviewer ...}, {gallery}, etc.
+                        .replace(/\s+/g, ' ')               // Normalize whitespace
                         .trim();
                 };
                 const plainDescription = stripHtml(news.description);
@@ -65,7 +67,7 @@
                         <%= plainDescription || 'ไม่มีรายละเอียดข่าว' %>
                     </p>
                     <div class="mt-auto">
-                        <a href="#" class="inline-flex items-center text-blue-600 font-semibold text-sm hover:text-blue-800 transition">
+                        <a href="<%= detailUrl %>" <%= detailUrl !== '#' ? 'target="_blank" rel="noopener"' : '' %> class="inline-flex items-center text-blue-600 font-semibold text-sm hover:text-blue-800 transition">
                             อ่านรายละเอียด <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
                         </a>
                     </div>

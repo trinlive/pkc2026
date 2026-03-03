@@ -60,6 +60,44 @@
         .remove-image:hover {
             background-color: #dc2626;
         }
+        .progress-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+        .progress-box {
+            background: white;
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            min-width: 400px;
+        }
+        .progress-bar-wrapper {
+            width: 100%;
+            height: 24px;
+            background: #e5e7eb;
+            border-radius: 12px;
+            overflow: hidden;
+            margin: 1rem 0;
+        }
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #ea580c, #f97316);
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body class="bg-gray-100">
@@ -82,7 +120,18 @@
                     </div>
                 <% } %>
 
-                <form action="/admin/news/add" method="POST" enctype="multipart/form-data" class="bg-white rounded-lg shadow-md p-6">
+                <!-- Progress Upload Modal -->
+                <div id="uploadProgress" class="progress-container">
+                    <div class="progress-box">
+                        <h3 class="text-xl font-bold text-gray-800 mb-2" id="progressTitle">กำลังอัปโหลด...</h3>
+                        <div class="progress-bar-wrapper">
+                            <div class="progress-bar" id="progressBar" style="width: 0%">0%</div>
+                        </div>
+                        <p class="text-sm text-gray-600 text-center" id="progressStatus">กำลังเตรียมข้อมูล...</p>
+                    </div>
+                </div>
+
+                <form id="newsForm" action="/admin/news/add" method="POST" enctype="multipart/form-data" class="bg-white rounded-lg shadow-md p-6">
                     <div class="space-y-6">
                         <!-- หัวข้อข่าว -->
                         <div>
@@ -143,6 +192,19 @@
                             <div id="imagePreview" class="mt-4"></div>
                         </div>
 
+                        <!-- ไฟล์อ่านรายละเอียด -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">📎 ไฟล์อ่านรายละเอียด (PDF/JPG)</label>
+                            <label class="file-input-label w-full">
+                                <input type="file" name="attachment" class="file-input" id="attachmentInput" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png">
+                                <div class="text-sm text-gray-600">
+                                    <div class="mb-1">📄 คลิกเพื่อเลือกไฟล์แนบสำหรับปุ่ม “อ่านรายละเอียด”</div>
+                                    <div class="text-xs text-gray-500">รองรับ: PDF, JPG, JPEG, PNG | สูงสุด 10MB</div>
+                                </div>
+                            </label>
+                            <p id="attachmentName" class="mt-2 text-sm text-gray-600"></p>
+                        </div>
+
                         <!-- สถานะการเผยแพร่ -->
                         <div>
                             <label class="flex items-center gap-2">
@@ -173,6 +235,47 @@
     <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/th.js"></script>
     
     <script>
+        const resizeImageFile = (file, { maxWidth = 1920, quality = 0.82 } = {}) => {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const ratio = Math.min(1, maxWidth / img.width);
+                        const canvas = document.createElement('canvas');
+                        canvas.width = Math.max(1, Math.round(img.width * ratio));
+                        canvas.height = Math.max(1, Math.round(img.height * ratio));
+
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+                        const outputType = 'image/jpeg';
+                        canvas.toBlob((blob) => {
+                            if (!blob) {
+                                return reject(new Error('ไม่สามารถย่อขนาดรูปภาพได้'));
+                            }
+                            const resizedFile = new File(
+                                [blob],
+                                file.name.replace(/\.[^/.]+$/, '.jpg'),
+                                { type: outputType, lastModified: Date.now() }
+                            );
+                            resolve(resizedFile);
+                        }, outputType, quality);
+                    };
+                    img.onerror = () => reject(new Error('ไม่สามารถอ่านไฟล์รูปภาพได้'));
+                    img.src = reader.result;
+                };
+                reader.onerror = () => reject(new Error('ไม่สามารถโหลดไฟล์สำหรับย่อขนาดได้'));
+                reader.readAsDataURL(file);
+            });
+        };
+
+        const setInputFile = (input, file) => {
+            const dt = new DataTransfer();
+            dt.items.add(file);
+            input.files = dt.files;
+        };
+
         // Flatpickr Date Picker
         flatpickr("#datepicker", {
             locale: "th",
@@ -200,9 +303,20 @@
         const imageInput = document.getElementById('imageInput');
         const imagePreview = document.getElementById('imagePreview');
 
-        imageInput.addEventListener('change', function(e) {
+        imageInput.addEventListener('change', async function(e) {
             const file = e.target.files[0];
             if (file) {
+                let previewFile = file;
+                if (file.type.startsWith('image/')) {
+                    try {
+                        const resizedFile = await resizeImageFile(file, { maxWidth: 1920, quality: 0.82 });
+                        setInputFile(imageInput, resizedFile);
+                        previewFile = resizedFile;
+                    } catch (error) {
+                        console.warn('Resize image failed, using original file:', error);
+                    }
+                }
+
                 const reader = new FileReader();
                 reader.onload = function(event) {
                     imagePreview.innerHTML = `
@@ -212,7 +326,7 @@
                         </div>
                     `;
                 };
-                reader.readAsDataURL(file);
+                reader.readAsDataURL(previewFile);
             }
         });
 
@@ -247,6 +361,115 @@
             imageInput.value = '';
             imagePreview.innerHTML = '';
         }
+
+        const attachmentInput = document.getElementById('attachmentInput');
+        const attachmentName = document.getElementById('attachmentName');
+        if (attachmentInput) {
+            attachmentInput.addEventListener('change', async function(e) {
+                const file = e.target.files[0];
+                if (!file) {
+                    attachmentName.textContent = '';
+                    return;
+                }
+
+                let selectedFile = file;
+                if (file.type.startsWith('image/')) {
+                    try {
+                        const resizedFile = await resizeImageFile(file, { maxWidth: 2200, quality: 0.85 });
+                        setInputFile(attachmentInput, resizedFile);
+                        selectedFile = resizedFile;
+                    } catch (error) {
+                        console.warn('Resize attachment image failed, using original file:', error);
+                    }
+                }
+
+                const mb = (selectedFile.size / (1024 * 1024)).toFixed(2);
+                attachmentName.textContent = `ไฟล์ที่เลือก: ${selectedFile.name} (${mb} MB)`;
+            });
+        }
+
+        // Handle form submission with progress tracking
+        const newsForm = document.getElementById('newsForm');
+        const uploadProgress = document.getElementById('uploadProgress');
+        const progressBar = document.getElementById('progressBar');
+        const progressTitle = document.getElementById('progressTitle');
+        const progressStatus = document.getElementById('progressStatus');
+
+        newsForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(newsForm);
+            
+            // Show progress modal
+            uploadProgress.style.display = 'flex';
+            progressBar.style.width = '0%';
+            progressBar.textContent = '0%';
+            progressTitle.textContent = 'กำลังอัปโหลด...';
+            progressStatus.textContent = 'กำลังเตรียมข้อมูล...';
+
+            try {
+                const xhr = new XMLHttpRequest();
+
+                // Track upload progress
+                xhr.upload.addEventListener('progress', (e) => {
+                    if (e.lengthComputable) {
+                        const percentComplete = Math.round((e.loaded / e.total) * 100);
+                        progressBar.style.width = percentComplete + '%';
+                        progressBar.textContent = percentComplete + '%';
+                        progressStatus.textContent = `กำลังอัปโหลดไฟล์... (${(e.loaded / (1024*1024)).toFixed(1)} MB / ${(e.total / (1024*1024)).toFixed(1)} MB)`;
+                    }
+                });
+
+                xhr.addEventListener('load', () => {
+                    if (xhr.status === 200) {
+                        progressBar.style.width = '100%';
+                        progressBar.textContent = '100%';
+                        progressTitle.textContent = '✓ สำเร็จ!';
+                        progressStatus.textContent = 'บันทึกข้อมูลเรียบร้อย กำลังโหลดหน้าใหม่...';
+                        setTimeout(() => {
+                            window.location.href = '/admin/news';
+                        }, 1000);
+                    } else {
+                        throw new Error('Upload failed');
+                    }
+                });
+
+                xhr.addEventListener('error', () => {
+                    progressTitle.textContent = '✗ เกิดข้อผิดพลาด';
+                    progressStatus.textContent = 'ไม่สามารถอัปโหลดได้ กรุณาลองใหม่อีกครั้ง';
+                    setTimeout(() => {
+                        uploadProgress.style.display = 'none';
+                    }, 3000);
+                });
+
+                xhr.addEventListener('loadend', () => {
+                    if (xhr.status !== 200) {
+                        progressTitle.textContent = '⚠ เกิดข้อผิดพลาด';
+                        progressStatus.textContent = 'กรุณาตรวจสอบข้อมูลและลองใหม่อีกครั้ง';
+                        setTimeout(() => {
+                            uploadProgress.style.display = 'none';
+                        }, 3000);
+                    }
+                });
+
+                // When upload completes, show processing status
+                xhr.upload.addEventListener('load', () => {
+                    progressTitle.textContent = 'กำลังประมวลผล...';
+                    progressStatus.textContent = 'กำลังบีบอัดและประมวลผลไฟล์...';
+                });
+
+                xhr.open('POST', '/admin/news/add');
+                xhr.send(formData);
+
+            } catch (error) {
+                console.error('Upload error:', error);
+                progressTitle.textContent = '✗ เกิดข้อผิดพลาด';
+                progressStatus.textContent = error.message || 'เกิดข้อผิดพลาดในการอัปโหลด';
+                setTimeout(() => {
+                    uploadProgress.style.display = 'none';
+                }, 3000);
+            }
+        });
     </script>
 </body>
 </html>

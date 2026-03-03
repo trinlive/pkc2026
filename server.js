@@ -24,6 +24,9 @@ app.use(express.static(path.join(__dirname, 'public')));
 // หน้าแรก: แสดงรายการข่าวสารทั้งหมด
 app.get('/', homeController.getHomePage);
 
+// หน้าดูข่าวทั้งหมด
+app.get('/news', homeController.getNewsListPage);
+
 // ========== Admin Routes ==========
 // Dashboard
 app.get('/admin/dashboard', adminController.getDashboard);

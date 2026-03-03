@@ -119,11 +119,11 @@ const News = {
     },
 
     // สร้างข่าวใหม่
-    create: async (title, description, image_url, news_category, date_posted, is_published, created_by) => {
+    create: async (title, description, image_url, attachment_url, news_category, date_posted, is_published, created_by) => {
         try {
             const [result] = await db.query(
-                'INSERT INTO news (title, description, image_url, news_category, date_posted, is_published, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)',
-                [title, description, image_url, news_category, date_posted, is_published ? 1 : 0, created_by]
+                'INSERT INTO news (title, description, image_url, attachment_url, news_category, date_posted, is_published, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                [title, description, image_url, attachment_url, news_category, date_posted, is_published ? 1 : 0, created_by]
             );
             return result;
         } catch (error) {
@@ -133,11 +133,11 @@ const News = {
     },
 
     // อัพเดทข่าว
-    update: async (id, title, description, image_url, news_category, date_posted, is_published, is_featured) => {
+    update: async (id, title, description, image_url, attachment_url, news_category, date_posted, is_published, is_featured) => {
         try {
             const [result] = await db.query(
-                'UPDATE news SET title = ?, description = ?, image_url = ?, news_category = ?, date_posted = ?, is_published = ?, is_featured = ? WHERE id = ?',
-                [title, description, image_url, news_category, date_posted, is_published ? 1 : 0, is_featured ? 1 : 0, id]
+                'UPDATE news SET title = ?, description = ?, image_url = ?, attachment_url = ?, news_category = ?, date_posted = ?, is_published = ?, is_featured = ? WHERE id = ?',
+                [title, description, image_url, attachment_url, news_category, date_posted, is_published ? 1 : 0, is_featured ? 1 : 0, id]
             );
             return result;
         } catch (error) {

@@ -67,3 +67,43 @@ exports.createPost = async (req, res) => {
         res.status(500).send('ไม่สามารถบันทึกข้อมูลได้');
     }
 };
+
+// หน้าดูข่าวทั้งหมด
+exports.getNewsListPage = async (req, res) => {
+    try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = 9;
+        const offset = (page - 1) * limit;
+
+        // ดึงข่าวที่เผยแพร่
+        const news = await News.getPublished(limit, offset);
+        
+        // ตรวจนับจำนวนข่าวทั้งหมด
+        const allNews = await News.getPublished();
+        const totalNews = allNews.length;
+        const totalPages = Math.ceil(totalNews / limit);
+
+        // ปรับรูปภาพให้ถูกต้อง
+        const newsForView = news.map((item) => ({
+            ...item,
+            image_preview_url: normalizeImageUrlForDisplay(item.image_url)
+        }));
+
+        res.render('home/news-list', { 
+            title: 'ข่าวประชาสัมพันธ์ | เทศบาลนครปากเกร็ด',
+            newsList: newsForView,
+            currentPage: page,
+            totalPages: totalPages,
+            totalNews: totalNews
+        });
+    } catch (error) {
+        console.error('Error fetching news list:', error);
+        res.render('home/news-list', { 
+            title: 'Error', 
+            newsList: [],
+            currentPage: 1,
+            totalPages: 1,
+            totalNews: 0
+        });
+    }
+};
