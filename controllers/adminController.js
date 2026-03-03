@@ -38,11 +38,33 @@ const normalizeImageUrlForDisplay = (imageUrl) => {
         return cleanUrl;
     }
 
+    // ไฟล์ที่มาจาก Joomla source (ต้นทาง) ให้ชี้ไปโดเมนหลัก
+    if (cleanUrl.startsWith('images/')) {
+        return `https://pakkretcity.go.th/${cleanUrl}`;
+    }
+
+    if (cleanUrl.startsWith('/images/')) {
+        return `https://pakkretcity.go.th${cleanUrl}`;
+    }
+
+    // ไฟล์ปลายทางของระบบใหม่ (/uploads/...)
     if (cleanUrl.startsWith('/')) {
         return cleanUrl;
     }
 
     return `/${cleanUrl}`;
+};
+
+const resolveDestinationNewsImagePath = (imageUrl) => {
+    const cleanUrl = cleanImageUrl(imageUrl);
+    if (!cleanUrl) return null;
+
+    const normalized = cleanUrl.startsWith('/') ? cleanUrl : `/${cleanUrl}`;
+    if (!normalized.startsWith('/uploads/news/')) {
+        return null;
+    }
+
+    return path.join('/var/www/vhosts/pakkretcity.go.th/n.pakkretcity.go.th/public', normalized);
 };
 
 /**
@@ -79,8 +101,8 @@ const copyImagesFromJoomla = async (htmlContent, postedDate = null) => {
     // Regex เพื่อหา image paths ทั้งหมด (images/news2026/..., images/news2025/..., etc.)
     // รองรับทั้งใน src="" และ plain text ที่อ้างอิง
     const imagePatterns = [
-        /images\/(news\d{4}\/[^"\s<>]+\.(jpg|jpeg|png|gif|webp|JPG|JPEG|PNG|GIF|WEBP))/gi,
-        /images\/(news\/[^"\s<>]+\.(jpg|jpeg|png|gif|webp|JPG|JPEG|PNG|GIF|WEBP))/gi
+        /images\/(news\d{4}\/[^"\s<>]+\.(jpg|jpeg|png|gif|webp|pdf|JPG|JPEG|PNG|GIF|WEBP|PDF))/gi,
+        /images\/(news\/[^"\s<>]+\.(jpg|jpeg|png|gif|webp|pdf|JPG|JPEG|PNG|GIF|WEBP|PDF))/gi
     ];
 
     const foundImages = new Set();
@@ -148,6 +170,80 @@ const copyImagesFromJoomla = async (htmlContent, postedDate = null) => {
     return { updatedContent, copiedImages, errors };
 };
 
+/**
+ * คัดลอก Thumbnail หัวข้อข่าว จาก Joomla ไปยัง N-Pakkret
+ * @param {string} originalImageUrl - Image URL จาก Joomla (เช่น "images/news2026/news5022.jpg")
+ * @param {Date} postedDate - วันที่ลงข่าวต้นฉบับจาก Joomla
+ * @returns {Promise<string>} - Path ใหม่ที่ชี้ไปยัง destination (เช่น "/uploads/news/news_20260303_143045_thumb.jpg")
+ */
+const copyThumbnailFromJoomla = async (originalImageUrl, postedDate = null) => {
+    if (!originalImageUrl) return null;
+
+    try {
+        const joomlaImagesPath = '/var/www/vhosts/pakkretcity.go.th/httpdocs/images';
+        const npakkretImagesPath = '/var/www/vhosts/pakkretcity.go.th/n.pakkretcity.go.th/public/uploads/news';
+
+        // Clean URL (remove fragment)
+        const cleanUrl = cleanImageUrl(originalImageUrl);
+        
+        // ตรวจสอบว่า path มี images/ หรือ /images/ (Joomla format)
+        if (!cleanUrl || (!cleanUrl.includes('images/'))) {
+            return originalImageUrl; // ถ้าไม่ใช่ Joomla path ให้คืนเดิม
+        }
+
+        // สร้าง timestamp
+        const generateTimestamp = (date) => {
+            if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
+                date = new Date();
+            }
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const hours = String(date.getHours()).padStart(2, '0');
+            const mins = String(date.getMinutes()).padStart(2, '0');
+            const secs = String(date.getSeconds()).padStart(2, '0');
+            return `${year}${month}${day}_${hours}${mins}${secs}`;
+        };
+
+        const timestamp = generateTimestamp(postedDate);
+
+        // แยก image path จาก cleanUrl
+        let imagePath;
+        if (cleanUrl.startsWith('images/')) {
+            imagePath = cleanUrl; // "images/news2026/file.jpg"
+        } else if (cleanUrl.startsWith('/images/')) {
+            imagePath = cleanUrl.substring(1); // remove leading / → "images/news2026/file.jpg"
+        } else {
+            return originalImageUrl;
+        }
+
+        // source base คือ .../httpdocs/images ดังนั้นต้องตัด prefix images/ ออกก่อน join
+        const relativeToImagesRoot = imagePath.replace(/^images\//i, '');
+        const sourcePath = path.join(joomlaImagesPath, relativeToImagesRoot);
+        
+        // ตรวจสอบว่าไฟล์ต้นทางมีอยู่
+        await fs.access(sourcePath);
+
+        // สร้างโฟลเดอร์ปลายทางถ้ายังไม่มี
+        await fs.mkdir(npakkretImagesPath, { recursive: true });
+
+        // ดึง extension และสร้างชื่อไฟล์ใหม่
+        const fileExt = path.extname(imagePath).toLowerCase() || '.jpg';
+        const newFilename = `news_${timestamp}_thumb${fileExt}`;
+        const destPath = path.join(npakkretImagesPath, newFilename);
+
+        // คัดลอกไฟล์
+        await fs.copyFile(sourcePath, destPath);
+
+        // คืน destination path
+        return `/uploads/news/${newFilename}`;
+
+    } catch (error) {
+        console.error('Error copying thumbnail from Joomla:', error);
+        return originalImageUrl; // ถ้า copy ไม่ได้ให้คืนเดิม
+    }
+};
+
 
 const mapJoomlaCategoryToNews = (joomlaCategoryName = '') => {
     if (joomlaCategoryName.includes('ข่าว')) return 'ข่าวประชาสัมพันธ์';
@@ -159,6 +255,100 @@ const resolveDestinationCategory = (destinationMenu, joomlaCategoryName) => {
         return DESTINATION_MENU_MAP[destinationMenu];
     }
     return mapJoomlaCategoryToNews(joomlaCategoryName);
+};
+
+const generateMigrationSummaryDescription = ({ title = '', introtext = '', fulltext = '', publishUp = null }) => {
+    const stripHtml = (value = '') => String(value)
+        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, ' ')
+        .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, ' ')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/&nbsp;/gi, ' ')
+        .replace(/&amp;/gi, '&')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+    const cleanTitle = stripHtml(title);
+    const introText = stripHtml(introtext);
+    const fullText = stripHtml(fulltext);
+    const mergedText = `${introText} ${fullText}`.replace(/\s+/g, ' ').trim();
+
+    const chunks = mergedText
+        .split(/[\n\r]+|\s{2,}|(?<=[.!?])\s+/)
+        .map(part => part.trim())
+        .filter(part => part.length >= 20);
+
+    const toFormalLine = (value = '') => {
+        let text = String(value)
+            .replace(/^([»>\-•\s])+/, '')
+            .replace(/^\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\s*/g, '')
+            .trim();
+
+        if (!text) return '';
+        if (!/[.!?…ฯ]$/.test(text)) {
+            text = `${text}.`;
+        }
+
+        return text;
+    };
+
+    const normalizeForCompare = (value = '') => String(value)
+        .toLowerCase()
+        .replace(/<[^>]+>/g, '')
+        .replace(/[\s\u00A0]+/g, '')
+        .replace(/[.,!?…ฯ:;"'“”‘’()\[\]{}\-_/\\]/g, '')
+        .trim();
+
+    const isDuplicateLine = (a = '', b = '') => {
+        const left = normalizeForCompare(a);
+        const right = normalizeForCompare(b);
+        return !!left && !!right && left === right;
+    };
+
+    const fallbackLine2Patterns = [
+        'เทศบาลนครปากเกร็ดขอประชาสัมพันธ์ข้อมูลข่าวสารเพื่อการรับทราบโดยทั่วกัน.',
+        'เทศบาลนครปากเกร็ดขอเชิญชวนประชาชนรับทราบข้อมูลและร่วมให้ความสนใจในรายละเอียดของข่าวนี้.',
+        'ทางเทศบาลนครปากเกร็ดขอแจ้งข้อมูลดังกล่าวเพื่อประโยชน์ในการรับทราบของประชาชนทั่วไป.',
+        'เทศบาลนครปากเกร็ดขอเผยแพร่ข้อมูลนี้เพื่อให้ประชาชนได้รับทราบและสามารถติดตามรายละเอียดเพิ่มเติมได้.',
+        'ประชาชนสามารถติดตามรายละเอียดเพิ่มเติมได้จากข้อมูลที่เทศบาลนครปากเกร็ดเผยแพร่.'
+    ];
+    const randomFallback = fallbackLine2Patterns[Math.floor(Math.random() * fallbackLine2Patterns.length)];
+
+    let line2 = chunks[0]
+        ? toFormalLine(chunks[0].length > 180 ? `${chunks[0].slice(0, 177)}...` : chunks[0])
+        : randomFallback;
+
+    const line1 = cleanTitle || 'ข่าวประชาสัมพันธ์';
+
+    if (isDuplicateLine(line1, line2)) {
+        const alternativeLine2 = chunks
+            .map(item => toFormalLine(item.length > 180 ? `${item.slice(0, 177)}...` : item))
+            .find(item => item && !isDuplicateLine(line1, item));
+
+        line2 = alternativeLine2 || randomFallback;
+    }
+
+    let line3 = chunks.find((part, index) => index > 0 && part !== line2) || '';
+    if (line3 && line3.length > 180) {
+        line3 = `${line3.slice(0, 177)}...`;
+    }
+    line3 = toFormalLine(line3);
+
+    if (isDuplicateLine(line3, line1) || isDuplicateLine(line3, line2)) {
+        line3 = '';
+    }
+
+    const postDate = publishUp ? new Date(publishUp) : null;
+    const dateLabel = postDate && !Number.isNaN(postDate.getTime())
+        ? postDate.toLocaleDateString('th-TH', { year: 'numeric', month: '2-digit', day: '2-digit' })
+        : null;
+
+    if (!line3) {
+        line3 = dateLabel
+            ? `ประกาศ ณ วันที่ ${dateLabel}.`
+            : 'ขอให้ประชาชนติดตามรายละเอียดเพิ่มเติมจากภาพประกอบหรือไฟล์แนบของข่าวนี้.';
+    }
+
+    return `<p>${line1}</p><p>${line2}</p><p>${line3}</p>`;
 };
 
 const adminController = {
@@ -471,18 +661,18 @@ const adminController = {
                 return res.status(404).send('ไม่พบข่าวนี้');
             }
 
-            // ลบไฟล์รูปภาพ
+            // ลบไฟล์รูปภาพเฉพาะปลายทางเท่านั้น (/public/uploads/news)
             if (news.image_url) {
-                const cleanUrl = cleanImageUrl(news.image_url);
-                if (cleanUrl) {
-                    // Resolve path relative to Joomla httpdocs directory
-                    const joomlaImagePath = path.join('/var/www/vhosts/pakkretcity.go.th/httpdocs', cleanUrl);
+                const destinationImagePath = resolveDestinationNewsImagePath(news.image_url);
+                if (destinationImagePath) {
                     try {
-                        await fs.unlink(joomlaImagePath);
-                        console.log(`Deleted image: ${joomlaImagePath}`);
+                        await fs.unlink(destinationImagePath);
+                        console.log(`Deleted destination image: ${destinationImagePath}`);
                     } catch (fileError) {
-                        console.warn(`Warning: Could not delete image files for news ${id}:`, fileError);
+                        console.warn(`Warning: Could not delete destination image for news ${id}:`, fileError);
                     }
+                } else {
+                    console.log(`Skip deleting source image for news ${id}: ${news.image_url}`);
                 }
             }
 
@@ -519,21 +709,19 @@ const adminController = {
                         continue;
                     }
 
-                    // ลบไฟล์รูปภาพ
+                    // ลบไฟล์รูปภาพเฉพาะปลายทางเท่านั้น (/public/uploads/news)
                     if (news.image_url) {
-                    const cleanUrl = cleanImageUrl(news.image_url);
-                    if (!cleanUrl) {
-                        console.warn(`Warning: Invalid image URL for news ${id}: ${news.image_url}`);
-                    } else {
-                        // Resolve path relative to Joomla httpdocs directory
-                        const joomlaImagePath = path.join('/var/www/vhosts/pakkretcity.go.th/httpdocs', cleanUrl);
+                        const destinationImagePath = resolveDestinationNewsImagePath(news.image_url);
+                        if (!destinationImagePath) {
+                            console.log(`Skip deleting source image for news ${id}: ${news.image_url}`);
+                        } else {
                         try {
-                            await fs.unlink(joomlaImagePath);
-                            console.log(`Deleted image: ${joomlaImagePath}`);
+                                await fs.unlink(destinationImagePath);
+                                console.log(`Deleted destination image: ${destinationImagePath}`);
                         } catch (fileError) {
-                            console.warn(`Warning: Could not delete image files for news ${id}:`, fileError);
+                                console.warn(`Warning: Could not delete destination image for news ${id}:`, fileError);
+                            }
                         }
-                    }
                     }
 
                     // ลบจากในฐานข้อมูล
@@ -823,7 +1011,8 @@ const adminController = {
             const {
                 limit = 10,
                 offset = 0,
-                categoryName = 'ข่าวประชาสัมพันธ์ | News'
+                categoryName = 'ข่าวประชาสัมพันธ์ | News',
+                useAiSummary = true
             } = req.body;
             const destinationMenu = 'news';
             const numericLimit = parseInt(limit, 10) || 10;
@@ -880,7 +1069,21 @@ const adminController = {
 
                     // 🖼️ คัดลอกรูปภาพจาก Joomla และแก้ไข path พร้อมเปลี่ยนชื่อเป็น timestamp
                     const imageCopyResult = await copyImagesFromJoomla(rawDescription, postedDate);
-                    const finalDescription = imageCopyResult.updatedContent;
+                    const summaryDescription = generateMigrationSummaryDescription({
+                        title: article.title,
+                        introtext: article.introtext,
+                        fulltext: article.fulltext,
+                        publishUp: article.publish_up
+                    });
+                    const finalDescription = useAiSummary === false || useAiSummary === 'false'
+                        ? imageCopyResult.updatedContent
+                        : summaryDescription;
+
+                    // 🖼️ คัดลอก Thumbnail หัวข้อข่าว จาก Joomla ไปยัง destination
+                    let finalImageUrl = null;
+                    if (imageUrl) {
+                        finalImageUrl = await copyThumbnailFromJoomla(imageUrl, postedDate);
+                    }
 
                     // เก็บสถิติการคัดลอกรูป
                     if (imageCopyResult.copiedImages.length > 0) {
@@ -901,7 +1104,7 @@ const adminController = {
                     await News.create(
                         article.title,
                         finalDescription, // ใช้ content ที่แก้ไข path แล้ว
-                        imageUrl,
+                        finalImageUrl,    // ใช้ image URL ที่ชี้ไปยัง destination
                         newsCategory,
                         postedDate,
                         1, // is_published

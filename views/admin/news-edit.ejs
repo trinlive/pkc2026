@@ -162,26 +162,7 @@
                         <!-- รูปภาพหัวข้อข่าว -->
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">🖼️ รูปภาพหัวข้อข่าว</label>
-                            <% 
-                                let previewImageUrl = '';
-                                if (news.image_url) {
-                                    try {
-                                        const cleanImagePath = decodeURIComponent(String(news.image_url).split('#')[0].trim());
-                                        if (cleanImagePath) {
-                                            if (/^https?:\/\//i.test(cleanImagePath) || cleanImagePath.startsWith('/')) {
-                                                previewImageUrl = cleanImagePath;
-                                            } else {
-                                                previewImageUrl = `/${cleanImagePath}`;
-                                            }
-                                        }
-                                    } catch (e) {
-                                        const fallbackPath = String(news.image_url).split('#')[0].trim();
-                                        if (fallbackPath) {
-                                            previewImageUrl = fallbackPath.startsWith('/') ? fallbackPath : `/${fallbackPath}`;
-                                        }
-                                    }
-                                }
-                            %>
+                            <% const previewImageUrl = news.image_preview_url || ''; %>
                             
                             <% if (previewImageUrl) { %>
                                 <div class="mb-4">
