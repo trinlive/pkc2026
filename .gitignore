@@ -8,15 +8,36 @@ node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+*.log
 
 # OS metadata
 .DS_Store
 Thumbs.db
 
-# Project specific
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Uploaded files (user-generated content)
+public/uploads/*
+!public/uploads/.gitkeep
+
+# Build outputs
+public/css/style.css
+
+# Testing files
+test-*.js
+
+# Development/Internal docs
 trinyah/
-test-db.js
+
+# Configuration files (อาจมี sensitive data)
+configuration.php
 
 # IDEs/Editors
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
