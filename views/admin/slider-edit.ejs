@@ -8,6 +8,54 @@
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Sarabun', sans-serif; }
+        .file-input-label {
+            display: inline-block;
+            cursor: pointer;
+            padding: 0.75rem 1.5rem;
+            background-color: #f3f4f6;
+            border: 2px dashed #d1d5db;
+            border-radius: 0.5rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+        .file-input-label:hover {
+            border-color: #3b82f6;
+            background-color: #dbeafe;
+        }
+        .file-input {
+            display: none;
+        }
+        .image-preview {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+        }
+        .image-preview img {
+            width: 100%;
+            height: auto;
+            border-radius: 0.5rem;
+            border: 2px solid #e5e7eb;
+        }
+        .remove-image {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            cursor: pointer;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .remove-image:hover {
+            background-color: #dc2626;
+        }
     </style>
 </head>
 <body class="bg-gray-100">
@@ -32,21 +80,28 @@
                         <% } %>
 
                         <!-- ภาพตัวอย่างปัจจุบัน -->
-                        <div class="bg-gray-50 rounded-lg p-4">
-                            <label class="block text-sm font-bold text-gray-700 mb-2">ภาพปัจจุบัน:</label>
-                            <img src="<%= slider.image_url %>" alt="<%= slider.title %>" class="w-full max-h-64 object-cover rounded-lg shadow">
-                        </div>
-
-                        <!-- อัปโหลดรูปภาพใหม่ -->
                         <div>
-                            <label class="block text-sm font-bold text-gray-700 mb-2">อัปโหลดรูปใหม่ (ถ้าต้องการเปลี่ยน)</label>
-                            <div class="bg-blue-50 border-l-4 border-blue-500 p-3 mb-3 rounded">
-                                <p class="text-sm text-blue-800 font-semibold">📐 ขนาดรูปภาพมาตรฐาน: 1920 x 1080 พิกเซล</p>
-                                <p class="text-xs text-blue-700 mt-1">✨ ระบบจะปรับขนาดรูปภาพให้อัตโนมัติเป็น 1920x1080 หลังจาก upload</p>
-                            </div>
-                            <input type="file" name="image_file" accept=".jpg,.jpeg,.png,.webp,.gif,image/*"
-                                   class="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none bg-white">
-                            <p class="text-xs text-gray-500 mt-1">อนุญาตเฉพาะ .jpg, .jpeg, .png, .webp, .gif (สูงสุด 10MB)</p>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">🖼️ รูปภาพ Slider</label>
+                            
+                            <% if (slider.image_url) { %>
+                                <div class="mb-4">
+                                    <p class="text-sm text-gray-600 mb-2">รูปภาพปัจจุบัน:</p>
+                                    <div class="image-preview">
+                                        <img src="<%= slider.image_url %>" alt="<%= slider.title %>">
+                                        <button type="button" class="remove-image" onclick="removeCurrentImage()">×</button>
+                                    </div>
+                                </div>
+                            <% } %>
+
+                            <label class="file-input-label">
+                                <input type="file" name="image_file" class="file-input" id="imageInput" accept=".jpg,.jpeg,.png,.webp,.gif,image/*">
+                                <div class="text-sm text-gray-600">
+                                    <div class="mb-1">📤 คลิกเพื่อเลือกไฟล์ หรือ ลากไฟล์มาวางที่นี่</div>
+                                    <div class="text-xs text-gray-500">📐 ขนาดแนะนำ: 1920x1080 px | สูงสุด 10MB</div>
+                                    <div class="text-xs text-blue-600 mt-1">✨ ระบบจะปรับขนาดให้เป็น 1920x1080 อัตโนมัติ</div>
+                                </div>
+                            </label>
+                            <div id="imagePreview" class="mt-4"></div>
                         </div>
 
                         <!-- หัวข้อหลัก -->
@@ -68,7 +123,7 @@
                             <label class="block text-sm font-bold text-gray-700 mb-2">URL รูปภาพ</label>
                             <input type="url" name="image_url" value="<%= slider.image_url %>"
                                    class="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none">
-                            <p class="text-xs text-gray-500 mt-1">หากอัปโหลดไฟล์ใหม่ ระบบจะใช้ไฟล์ใหม่แทน URL นี้</p>
+                            <p class="text-xs text-blue-600 mt-1">💡 เคล็ดลับ: เมื่อคุณเลือกไฟล์ใหม่ ระบบจะล้างและปิดช่อง URL นี้อัตโนมัติ</p>
                         </div>
 
                         <!-- URL ลิงก์ -->
@@ -128,5 +183,78 @@
             </div>
         </main>
     </div>
+    
+    <script>
+        // Image Preview
+        const imageInput = document.getElementById('imageInput');
+        const imagePreview = document.getElementById('imagePreview');
+        const imageUrlInput = document.querySelector('input[name="image_url"]');
+
+        imageInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                // แสดง preview
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    imagePreview.innerHTML = `
+                        <div class="image-preview">
+                            <img src="${event.target.result}" alt="Preview">
+                            <button type="button" class="remove-image" onclick="clearImage()">×</button>
+                        </div>
+                    `;
+                };
+                reader.readAsDataURL(file);
+                
+                // ล้างและ disable URL field อัตโนมัติ
+                imageUrlInput.value = '';
+                imageUrlInput.disabled = true;
+                imageUrlInput.style.backgroundColor = '#f3f4f6';
+                imageUrlInput.style.color = '#9ca3af';
+            }
+        });
+
+        // Drag and Drop
+        const fileInputLabel = document.querySelector('.file-input-label');
+        
+        fileInputLabel.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            fileInputLabel.style.borderColor = '#3b82f6';
+            fileInputLabel.style.backgroundColor = '#dbeafe';
+        });
+
+        fileInputLabel.addEventListener('dragleave', () => {
+            fileInputLabel.style.borderColor = '#d1d5db';
+            fileInputLabel.style.backgroundColor = '#f3f4f6';
+        });
+
+        fileInputLabel.addEventListener('drop', (e) => {
+            e.preventDefault();
+            fileInputLabel.style.borderColor = '#d1d5db';
+            fileInputLabel.style.backgroundColor = '#f3f4f6';
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                imageInput.files = files;
+                const event = new Event('change', { bubbles: true });
+                imageInput.dispatchEvent(event);
+            }
+        });
+
+        function clearImage() {
+            imageInput.value = '';
+            imagePreview.innerHTML = '';
+            // เปิด URL field กลับมาใช้งานได้
+            imageUrlInput.disabled = false;
+            imageUrlInput.style.backgroundColor = '';
+            imageUrlInput.style.color = '';
+        }
+
+        function removeCurrentImage() {
+            // This just provides visual feedback; the actual image stays in database
+            if (confirm('ต้องการซ่อนรูปภาพปัจจุบัน? (ถ้าไม่อัปโหลดรูปใหม่ รูปเดิมจะยังคงอยู่)')) {
+                document.querySelector('.image-preview').style.opacity = '0.3';
+            }
+        }
+    </script>
 </body>
 </html>

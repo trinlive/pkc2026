@@ -4,6 +4,7 @@ const app = express();
 const homeController = require('./controllers/homeController');
 const adminController = require('./controllers/adminController');
 const sliderUpload = require('./middlewares/sliderUpload');
+const newsUpload = require('./middlewares/newsUpload');
 
 // 1. ตั้งค่า View Engine เป็น EJS
 app.set('view engine', 'ejs');
@@ -37,8 +38,18 @@ app.get('/admin/models', adminController.getModelsList);
 app.get('/admin/models/:filename', adminController.getModelContent);
 app.post('/admin/models/:filename', adminController.updateModel);
 
-// จัดการข่าวสาร
-app.get('/admin/news', adminController.getNewsManagement);
+// จัดการข่าวประชาสัมพันธ์
+app.get('/admin/news', adminController.getNewsList);
+app.get('/admin/news/add', adminController.getNewsAddForm);
+app.post('/admin/news/add', newsUpload, adminController.createNews);
+app.get('/admin/news/edit/:id', adminController.getNewsEditForm);
+app.post('/admin/news/edit/:id', newsUpload, adminController.updateNews);
+app.post('/admin/news/delete/:id', adminController.deleteNews);
+app.post('/admin/news/delete-multiple', adminController.deleteNewsMultiple);
+app.post('/admin/news/toggle-publish/:id', adminController.toggleNewsPublish);
+app.post('/admin/news/toggle-featured/:id', adminController.toggleNewsFeatured);
+
+// จัดการข่าวสาร (เก่า - สำหรับ backward compatibility)
 app.post('/admin/add', homeController.createPost);
 
 // จัดการ Sliders
@@ -50,6 +61,12 @@ app.post('/admin/sliders/edit/:id', sliderUpload, adminController.updateSlider);
 app.post('/admin/sliders/delete/:id', adminController.deleteSlider);
 app.post('/admin/sliders/toggle/:id', adminController.toggleSliderStatus);
 
+// Data Migration from Joomla
+app.get('/admin/migration', adminController.getMigrationDashboard);
+app.post('/admin/migration/news/preview', adminController.previewMigrationNewsFromJoomla);
+app.post('/admin/migration/news', adminController.migrateNewsFromJoomla);
+app.get('/admin/migration/check-connection', adminController.checkJoomlaConnection);
+
 // หน้าจัดการเก่า (redirect ไป dashboard)
 app.get('/admin', (req, res) => res.redirect('/admin/dashboard'));
 
@@ -58,7 +75,7 @@ app.get('/test/slider', async (req, res) => {
     try {
         const Slider = require('./models/sliderModel');
         const sliders = await Slider.getAll();
-        res.render('slider-test', { 
+        res.render('home/slider-test', { 
             title: 'ทดสอบขนาด Slider - 1920x1080',
             sliders: sliders
         });
