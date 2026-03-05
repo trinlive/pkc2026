@@ -80,6 +80,7 @@
     </style>
 </head>
 <body class="bg-gray-50 text-gray-900">
+    <% const safeSearchQuery = (typeof searchQuery !== 'undefined' && searchQuery) ? searchQuery : ''; %>
     <%- include('./partials/mourning_ribbon') %>
     <%- include('./partials/header') %>
 
@@ -108,6 +109,7 @@
                         type="text" 
                         id="searchInput" 
                         placeholder="ค้นหาข่าว..." 
+                        value="<%= safeSearchQuery %>"
                         class="w-full px-4 py-3 rounded-lg text-gray-800 focus:outline-none focus:ring-4 focus:ring-yellow-400 transition shadow-md"
                     >
                     <svg class="absolute right-3 top-3.5 w-5 h-5 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -119,10 +121,11 @@
                 </button>
             </div>
             
-            <div class="flex items-center justify-between text-sm text-blue-100">
-                <p id="newsCount">รวม <%= totalNews %> รายการข่าว</p>
-                <p id="searchResult" class="hidden text-yellow-300">พบ <span id="resultCount">0</span> รายการ</p>
-            </div>
+            <% if (safeSearchQuery) { %>
+                <p class="text-blue-100">ผลการค้นหา "<%= safeSearchQuery %>" - พบ <%= totalNews %> รายการ</p>
+            <% } else { %>
+                <p class="text-blue-100">รวม <%= totalNews %> รายการข่าว</p>
+            <% } %>
         </div>
     </header>
 
@@ -218,7 +221,7 @@
                 <nav class="mt-12 flex justify-center items-center gap-2">
                     <!-- Previous Button -->
                     <% if (currentPage > 1) { %>
-                        <a href="/news?page=<%= currentPage - 1 %>" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-blue-50 hover:border-blue-400 transition">
+                        <a href="/news<%= safeSearchQuery ? '?q=' + encodeURIComponent(safeSearchQuery) + '&page=' : '?page=' %><%= currentPage - 1 %>" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-blue-50 hover:border-blue-400 transition">
                             ← ก่อนหน้า
                         </a>
                     <% } else { %>
@@ -234,7 +237,7 @@
                             const endPage = Math.min(totalPages, currentPage + 2);
                         %>
                         <% if (startPage > 1) { %>
-                            <a href="/news?page=1" class="px-3 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-blue-50 transition">1</a>
+                            <a href="/news<%= safeSearchQuery ? '?q=' + encodeURIComponent(safeSearchQuery) + '&page=1' : '?page=1' %>" class="px-3 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-blue-50 transition">1</a>
                             <% if (startPage > 2) { %>
                                 <span class="px-3 py-2 text-gray-400">...</span>
                             <% } %>
@@ -246,7 +249,7 @@
                                     <%= i %>
                                 </span>
                             <% } else { %>
-                                <a href="/news?page=<%= i %>" class="px-3 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-blue-50 hover:border-blue-400 transition">
+                                <a href="/news<%= safeSearchQuery ? '?q=' + encodeURIComponent(safeSearchQuery) + '&page=' + i : '?page=' + i %>" class="px-3 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-blue-50 hover:border-blue-400 transition">
                                     <%= i %>
                                 </a>
                             <% } %>
@@ -256,7 +259,7 @@
                             <% if (endPage < totalPages - 1) { %>
                                 <span class="px-3 py-2 text-gray-400">...</span>
                             <% } %>
-                            <a href="/news?page=<%= totalPages %>" class="px-3 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-blue-50 transition">
+                            <a href="/news<%= safeSearchQuery ? '?q=' + encodeURIComponent(safeSearchQuery) + '&page=' + totalPages : '?page=' + totalPages %>" class="px-3 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-blue-50 transition">
                                 <%= totalPages %>
                             </a>
                         <% } %>
@@ -264,7 +267,7 @@
 
                     <!-- Next Button -->
                     <% if (currentPage < totalPages) { %>
-                        <a href="/news?page=<%= currentPage + 1 %>" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-blue-50 hover:border-blue-400 transition">
+                        <a href="/news<%= safeSearchQuery ? '?q=' + encodeURIComponent(safeSearchQuery) + '&page=' : '?page=' %><%= currentPage + 1 %>" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-blue-50 hover:border-blue-400 transition">
                             ถัดไป →
                         </a>
                     <% } else { %>
@@ -377,57 +380,27 @@
     <script>
         // Search functionality
         const searchInput = document.getElementById('searchInput');
-        const searchResultMsg = document.getElementById('searchResult');
-        const resultCountSpan = document.getElementById('resultCount');
         
+        // ค้นหาเมื่อ Enter key ถูกกด
         if (searchInput) {
-            searchInput.addEventListener('input', function() {
-                filterNews(this.value);
+            searchInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    performSearch();
+                }
             });
         }
         
-        function filterNews(searchTerm) {
-            const newsCards = document.querySelectorAll('[data-news-card]');
-            const searchLower = searchTerm.toLowerCase().trim();
-            let visibleCount = 0;
-            
-            newsCards.forEach(card => {
-                const title = card.getAttribute('data-title') || '';
-                const description = card.getAttribute('data-description') || '';
-                const category = card.getAttribute('data-category') || '';
-                
-                // Search in title, description, and category
-                const searchText = (title + ' ' + description + ' ' + category).toLowerCase();
-                const matches = searchText.includes(searchLower);
-                
-                if (searchLower === '') {
-                    // Show all if search is empty
-                    card.style.display = '';
-                    visibleCount++;
-                } else if (matches) {
-                    card.style.display = '';
-                    card.classList.add('highlight-search');
-                    visibleCount++;
-                } else {
-                    card.style.display = 'none';
-                    card.classList.remove('highlight-search');
-                }
-            });
-            
-            // Update search result message
-            if (searchLower !== '') {
-                searchResultMsg.classList.remove('hidden');
-                resultCountSpan.textContent = visibleCount;
+        function performSearch() {
+            const searchTerm = (searchInput.value || '').trim();
+            if (searchTerm) {
+                window.location.href = `/news?q=${encodeURIComponent(searchTerm)}`;
             } else {
-                searchResultMsg.classList.add('hidden');
+                window.location.href = '/news';
             }
         }
         
         function clearSearch() {
-            searchInput.value = '';
-            searchResultMsg.classList.add('hidden');
-            filterNews('');
-            searchInput.focus();
+            window.location.href = '/news';
         }
         
         // Handle attachment click (PDF or Image)

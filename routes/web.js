@@ -8,4 +8,7 @@ router.get('/', homeController.getHomePage);
 // หน้าดูข่าวทั้งหมด
 router.get('/news', homeController.getNewsListPage);
 
+// หน้าดูข่าวกิจกรรมทั้งหมด
+router.get('/activities', homeController.getActivitiesListPage);
+
 module.exports = router;

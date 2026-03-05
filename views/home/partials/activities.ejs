@@ -16,114 +16,61 @@
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            
-            <div class="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-shadow duration-300 group cursor-pointer flex flex-col">
-                <div class="relative overflow-hidden h-52">
-                    <img src="https://picsum.photos/800/600?random=11" alt="กิจกรรม" class="w-full h-full object-cover transform group-hover:scale-110 transition duration-500">
-                    <div class="absolute top-4 left-4 bg-yellow-500 text-gray-900 text-xs font-bold px-3 py-1.5 rounded-full shadow">
-                        ข่าวกิจกรรม
-                    </div>
-                </div>
-                <div class="p-6 flex-1 flex flex-col">
-                    <h3 class="text-lg font-bold text-gray-800 mb-3 line-clamp-2 group-hover:text-blue-600 transition">
-                        มจพ. ศึกษาดูงานด้านกระบวนการบริหารจัดการน้ำเสีย และการบริหารจัดการสิ่งแวดล้อม ของทน.ปากเกร็ด
-                    </h3>
-                    <div class="mt-auto flex items-center text-sm text-gray-500 border-t border-gray-100 pt-4">
-                        <svg class="w-4 h-4 mr-1.5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                        20 February 2026
-                    </div>
-                </div>
-            </div>
+            <% if (activitiesList && activitiesList.length > 0) { %>
+                <% activitiesList.slice(0, 6).forEach((activity) => { %>
+                    <% 
+                        const date = activity.date_posted ? new Date(activity.date_posted) : new Date();
+                        const displayDate = date.toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' });
+                        const sourceImageUrl = activity.image_preview_url || activity.image_url;
+                        const detailUrl = activity.attachment_url || '#';
+                        let imageUrl = 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?q=80&w=800&auto=format&fit=crop';
 
-            <div class="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-shadow duration-300 group cursor-pointer flex flex-col">
-                <div class="relative overflow-hidden h-52">
-                    <img src="https://picsum.photos/800/600?random=12" alt="กิจกรรม" class="w-full h-full object-cover transform group-hover:scale-110 transition duration-500">
-                    <div class="absolute top-4 left-4 bg-yellow-500 text-gray-900 text-xs font-bold px-3 py-1.5 rounded-full shadow">
-                        ข่าวกิจกรรม
+                        if (sourceImageUrl) {
+                            try {
+                                const cleanImagePath = decodeURIComponent(String(sourceImageUrl).split('#')[0].trim());
+                                if (cleanImagePath) {
+                                    if (/^https?:\/\//i.test(cleanImagePath) || cleanImagePath.startsWith('/')) {
+                                        imageUrl = cleanImagePath;
+                                    } else {
+                                        imageUrl = `/${cleanImagePath}`;
+                                    }
+                                }
+                            } catch (e) {
+                                const fallbackPath = String(sourceImageUrl).split('#')[0].trim();
+                                if (fallbackPath) {
+                                    imageUrl = fallbackPath.startsWith('/') ? fallbackPath : `/${fallbackPath}`;
+                                }
+                            }
+                        }
+                    %>
+                    <div class="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-shadow duration-300 group cursor-pointer flex flex-col">
+                        <div class="relative overflow-hidden h-52">
+                            <img src="<%= imageUrl %>" alt="<%= activity.title %>" class="w-full h-full object-cover transform group-hover:scale-110 transition duration-500">
+                            <div class="absolute top-4 left-4 bg-yellow-500 text-gray-900 text-xs font-bold px-3 py-1.5 rounded-full shadow">
+                                ข่าวกิจกรรม
+                            </div>
+                        </div>
+                        <div class="p-6 flex-1 flex flex-col">
+                            <h3 class="text-lg font-bold text-gray-800 mb-3 line-clamp-2 group-hover:text-blue-600 transition">
+                                <%= activity.title %>
+                            </h3>
+                            <div class="mt-auto flex items-center justify-between text-sm text-gray-500 border-t border-gray-100 pt-4 gap-3">
+                                <div class="flex items-center min-w-0">
+                                    <svg class="w-4 h-4 mr-1.5 text-blue-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                    <span class="truncate"><%= displayDate %></span>
+                                </div>
+                                <button type="button" data-url="<%= detailUrl || '#' %>" data-title="<%= activity.title || '' %>" onclick="handleActivityAttachmentClickFromButton(this)" class="text-blue-600 hover:text-blue-800 font-semibold whitespace-nowrap">
+                                    อ่านรายละเอียด
+                                </button>
+                            </div>
+                        </div>
                     </div>
+                <% }); %>
+            <% } else { %>
+                <div class="col-span-1 md:col-span-2 lg:col-span-3 bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center text-gray-500">
+                    ยังไม่มีข่าวกิจกรรมในระบบ
                 </div>
-                <div class="p-6 flex-1 flex flex-col">
-                    <h3 class="text-lg font-bold text-gray-800 mb-3 line-clamp-2 group-hover:text-blue-600 transition">
-                        พิธีวางศิลาฤกษ์ตอกเสาเข็ม อาคารโรงเรียนพุทธศาสนาวันอาทิตย์ วัดชลประทานฯ
-                    </h3>
-                    <div class="mt-auto flex items-center text-sm text-gray-500 border-t border-gray-100 pt-4">
-                        <svg class="w-4 h-4 mr-1.5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                        20 February 2026
-                    </div>
-                </div>
-            </div>
-
-            <div class="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-shadow duration-300 group cursor-pointer flex flex-col">
-                <div class="relative overflow-hidden h-52">
-                    <img src="https://picsum.photos/800/600?random=13" alt="กิจกรรม" class="w-full h-full object-cover transform group-hover:scale-110 transition duration-500">
-                    <div class="absolute top-4 left-4 bg-yellow-500 text-gray-900 text-xs font-bold px-3 py-1.5 rounded-full shadow">
-                        ข่าวกิจกรรม
-                    </div>
-                </div>
-                <div class="p-6 flex-1 flex flex-col">
-                    <h3 class="text-lg font-bold text-gray-800 mb-3 line-clamp-2 group-hover:text-blue-600 transition">
-                        นครปากเกร็ด ร่วมลงนาม MOU โครงการดำเนินงานตำบลยั่งยืนเพื่อแก้ไขปัญหายาเสพติดแบบครบวงจร
-                    </h3>
-                    <div class="mt-auto flex items-center text-sm text-gray-500 border-t border-gray-100 pt-4">
-                        <svg class="w-4 h-4 mr-1.5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                        20 February 2026
-                    </div>
-                </div>
-            </div>
-
-            <div class="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-shadow duration-300 group cursor-pointer flex flex-col">
-                <div class="relative overflow-hidden h-52">
-                    <img src="https://picsum.photos/800/600?random=14" alt="กิจกรรม" class="w-full h-full object-cover transform group-hover:scale-110 transition duration-500">
-                    <div class="absolute top-4 left-4 bg-yellow-500 text-gray-900 text-xs font-bold px-3 py-1.5 rounded-full shadow">
-                        ข่าวกิจกรรม
-                    </div>
-                </div>
-                <div class="p-6 flex-1 flex flex-col">
-                    <h3 class="text-lg font-bold text-gray-800 mb-3 line-clamp-2 group-hover:text-blue-600 transition">
-                        สำนักงานเจ้าท่าภูมิภาคสาขานนทบุรี สั่งปิดท่าเทียบเรือวัดสนามเหนือชั่วคราว เพื่อเร่งซ่อมแซม
-                    </h3>
-                    <div class="mt-auto flex items-center text-sm text-gray-500 border-t border-gray-100 pt-4">
-                        <svg class="w-4 h-4 mr-1.5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                        20 February 2026
-                    </div>
-                </div>
-            </div>
-
-            <div class="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-shadow duration-300 group cursor-pointer flex flex-col">
-                <div class="relative overflow-hidden h-52">
-                    <img src="https://picsum.photos/800/600?random=15" alt="กิจกรรม" class="w-full h-full object-cover transform group-hover:scale-110 transition duration-500">
-                    <div class="absolute top-4 left-4 bg-yellow-500 text-gray-900 text-xs font-bold px-3 py-1.5 rounded-full shadow">
-                        ข่าวกิจกรรม
-                    </div>
-                </div>
-                <div class="p-6 flex-1 flex flex-col">
-                    <h3 class="text-lg font-bold text-gray-800 mb-3 line-clamp-2 group-hover:text-blue-600 transition">
-                        ผวจ.นนทบุรี และเทศบาลนครปากเกร็ด ลงพื้นที่ตรวจเยี่ยมความเรียบร้อย ของการเลือกตั้งสส. ในเขตปากเกร็ด
-                    </h3>
-                    <div class="mt-auto flex items-center text-sm text-gray-500 border-t border-gray-100 pt-4">
-                        <svg class="w-4 h-4 mr-1.5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                        20 February 2026
-                    </div>
-                </div>
-            </div>
-
-            <div class="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-shadow duration-300 group cursor-pointer flex flex-col">
-                <div class="relative overflow-hidden h-52">
-                    <img src="https://picsum.photos/800/600?random=16" alt="กิจกรรม" class="w-full h-full object-cover transform group-hover:scale-110 transition duration-500">
-                    <div class="absolute top-4 left-4 bg-yellow-500 text-gray-900 text-xs font-bold px-3 py-1.5 rounded-full shadow">
-                        ข่าวกิจกรรม
-                    </div>
-                </div>
-                <div class="p-6 flex-1 flex flex-col">
-                    <h3 class="text-lg font-bold text-gray-800 mb-3 line-clamp-2 group-hover:text-blue-600 transition">
-                        ๓ กุมภาพันธ์ ๒๕๖๙ การจัดทำแผนชุมชน ประจำปี พ.ศ. ๒๕๗๐
-                    </h3>
-                    <div class="mt-auto flex items-center text-sm text-gray-500 border-t border-gray-100 pt-4">
-                        <svg class="w-4 h-4 mr-1.5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                        20 February 2026
-                    </div>
-                </div>
-            </div>
+            <% } %>
 
         </div>
         
@@ -134,4 +81,127 @@
         </div>
 
     </div>
+
+    <div id="activityAttachmentModal" class="modal-overlay" onclick="closeActivityAttachmentModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div id="activityModalBody" class="relative"></div>
+            <button type="button" onclick="closeActivityAttachmentModal()" class="absolute top-4 right-4 bg-white/10 hover:bg-white/20 text-white rounded-full w-12 h-12 flex items-center justify-center transition backdrop-blur-sm border border-white/30">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+            <a id="activityModalDownload" href="#" download class="absolute bottom-4 right-4 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition shadow-lg">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                </svg>
+                ดาวน์โหลด
+            </a>
+            <div class="absolute top-4 left-4 bg-black/60 text-white px-4 py-2 rounded-lg backdrop-blur-sm max-w-2xl">
+                <p id="activityModalTitle" class="font-semibold text-sm"></p>
+            </div>
+        </div>
+    </div>
 </section>
+
+<style>
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.9);
+        z-index: 9999;
+        animation: fadeIn 0.2s ease-out;
+    }
+    .modal-overlay.active {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .modal-content {
+        position: relative;
+        max-width: 90vw;
+        max-height: 90vh;
+        animation: zoomIn 0.3s ease-out;
+    }
+    .modal-content img,
+    .modal-content iframe {
+        max-width: 100%;
+        max-height: 90vh;
+        border-radius: 8px;
+        box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+        background: #fff;
+    }
+    .modal-content iframe {
+        width: 90vw;
+        height: 90vh;
+        border: 0;
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    @keyframes zoomIn {
+        from { transform: scale(0.8); opacity: 0; }
+        to { transform: scale(1); opacity: 1; }
+    }
+</style>
+
+<script>
+    function handleActivityAttachmentClickFromButton(buttonEl) {
+        const url = buttonEl?.dataset?.url || '#';
+        const title = buttonEl?.dataset?.title || '';
+        handleActivityAttachmentClick(url, title);
+    }
+
+    function handleActivityAttachmentClick(url, title) {
+        if (!url || url === '#') {
+            alert('ไม่มีไฟล์แนบสำหรับกิจกรรมนี้');
+            return;
+        }
+
+        const modal = document.getElementById('activityAttachmentModal');
+        const modalTitle = document.getElementById('activityModalTitle');
+        const modalBody = document.getElementById('activityModalBody');
+        const modalDownload = document.getElementById('activityModalDownload');
+        const ext = url.toLowerCase().split('.').pop().split('?')[0];
+
+        modalTitle.textContent = title || 'รายละเอียดกิจกรรม';
+        modalDownload.href = url;
+        modalDownload.setAttribute('download', '');
+
+        if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
+            modalBody.innerHTML = `<img src="${url}" alt="${title || 'attachment'}">`;
+        } else if (ext === 'pdf') {
+            modalBody.innerHTML = `<iframe src="${url}" title="${title || 'PDF'}"></iframe>`;
+        } else {
+            window.open(url, '_blank', 'noopener,noreferrer');
+            return;
+        }
+
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeActivityAttachmentModal(event) {
+        if (!event || event.target.id === 'activityAttachmentModal') {
+            const modal = document.getElementById('activityAttachmentModal');
+            const modalBody = document.getElementById('activityModalBody');
+            const modalDownload = document.getElementById('activityModalDownload');
+            modal.classList.remove('active');
+            modalBody.innerHTML = '';
+            if (modalDownload) {
+                modalDownload.href = '#';
+            }
+            document.body.style.overflow = 'auto';
+        }
+    }
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeActivityAttachmentModal();
+        }
+    });
+</script>

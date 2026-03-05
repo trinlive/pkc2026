@@ -20,7 +20,7 @@
 <body class="bg-gray-100">
     <div class="flex min-h-screen">
         <!-- Sidebar -->
-        <%- include('admin-panel', { currentPage }) %>
+        <%- include('partials/sidebar', { currentPage: 'migration' }) %>
 
         <!-- Main Content -->
         <main class="flex-1 p-8">
@@ -114,9 +114,9 @@
                 <div class="bg-white rounded-lg shadow-md p-6">
                     <h3 class="text-xl font-bold text-gray-800 mb-4">🔧 เครื่องมือ Migration</h3>
                     
-                    <!-- News Migration Form -->
+                    <!-- Universal Migration Form -->
                     <div class="border-2 border-blue-200 rounded-lg p-6 mb-4">
-                        <h4 class="text-lg font-bold text-blue-800 mb-4">📰 Migrate ข่าวประชาสัมพันธ์</h4>
+                        <h4 class="text-lg font-bold text-blue-800 mb-4">📰 Migrate ข่าวประชาสัมพันธ์ / 🎯 จัดการข่าวกิจกรรม</h4>
                         
                         <form id="migrationForm" class="space-y-4">
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -140,10 +140,10 @@
                                     <label class="block text-sm font-medium text-gray-700 mb-2">
                                         ปลายทาง (Menu จัดการ):
                                     </label>
-                                     <input type="text" value="จัดการข่าวสาร → ข่าวประชาสัมพันธ์"
-                                           class="w-full p-3 border-2 border-gray-200 rounded-lg bg-gray-100 text-gray-700"
-                                           readonly>
-                                    <input type="hidden" name="destinationMenu" value="news">
+                                    <select name="destinationMenu" class="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none">
+                                        <option value="news">📰 จัดการข่าวสาร → ข่าวประชาสัมพันธ์</option>
+                                        <option value="activities">🎯 จัดการข่าวกิจกรรม</option>
+                                    </select>
                                 </div>
                                 <div class="grid grid-cols-2 gap-4">
                                     <div>
@@ -189,7 +189,7 @@
                                         disabled>
                                     ⛔ หยุดงาน
                                 </button>
-                                <button type="button" onclick="location.href='/admin/news'"
+                                <button type="button" id="viewItemsBtn"
                                         class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-lg transition shadow-md">
                                     📋 ดูรายการข่าว
                                 </button>
@@ -554,6 +554,30 @@
             }
         };
 
+        // View items button - dynamic URL based on destination
+        const viewItemsBtn = document.getElementById('viewItemsBtn');
+        const destinationMenuSelect = document.querySelector('select[name="destinationMenu"]');
+        
+        const updateViewItemsBtn = () => {
+            const destination = destinationMenuSelect.value;
+            const urls = {
+                'news': '/admin/news',
+                'activities': '/admin/activities'
+            };
+            const url = urls[destination] || '/admin/news';
+            viewItemsBtn.onclick = () => location.href = url;
+            
+            const labels = {
+                'news': '📋 ดูรายการข่าว',
+                'activities': '📋 ดูรายการข่าวกิจกรรม'
+            };
+            const label = labels[destination] || 'ดูรายการข่าว';
+            viewItemsBtn.textContent = label;
+        };
+        
+        updateViewItemsBtn();
+        destinationMenuSelect?.addEventListener('change', updateViewItemsBtn);
+
         cancelMigrateBtn.addEventListener('click', () => {
             if (!isMigrationRunning) return;
             cancelRequested = true;
@@ -585,7 +609,7 @@
             updateProgressUi(0, 1, 0, 0, 'กำลังเตรียม Preview...');
 
             try {
-                const response = await fetch('/admin/migration/news/preview', {
+                const response = await fetch(`/admin/migration/${data.destinationMenu}/preview`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -736,7 +760,7 @@
                         `กำลังรัน Batch ${batchIndex + 1}/${totalBatches} (offset: ${currentOffset}, limit: ${currentBatchLimit})`
                     );
 
-                    const response = await fetch('/admin/migration/news', {
+                    const response = await fetch(`/admin/migration/${baseData.destinationMenu}`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'

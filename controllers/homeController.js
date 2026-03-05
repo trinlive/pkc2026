@@ -1,6 +1,7 @@
 const Post = require('../models/postModel');
 const Slider = require('../models/sliderModel');
 const News = require('../models/newsModel');
+const Activity = require('../models/activityModel');
 
 const cleanImageUrl = (imageUrl) => {
     if (!imageUrl) return null;
@@ -31,6 +32,7 @@ const normalizeImageUrlForDisplay = (imageUrl) => {
 exports.getHomePage = async (req, res) => {
     try {
         const news = await News.getHomepageNews(5);
+        const activities = await Activity.getHomepageActivities(6);
         const sliders = await Slider.getAll();
         
         // กรองเฉพาะ slider ที่ active และเรียงตาม display_order
@@ -39,11 +41,16 @@ exports.getHomePage = async (req, res) => {
             ...item,
             image_preview_url: normalizeImageUrlForDisplay(item.image_url)
         }));
+        const activitiesForView = activities.map((item) => ({
+            ...item,
+            image_preview_url: normalizeImageUrlForDisplay(item.image_url)
+        }));
         
         res.render('home/index', { 
             title: 'หน้าแรก | เทศบาลนครปากเกร็ด',
             welcomeMessage: 'ยินดีต้อนรับสู่ระบบ N-Pakkret Node.js',
             newsList: newsForView,
+            activitiesList: activitiesForView,
             sliders: activeSliders
         });
     } catch (error) {
@@ -51,6 +58,7 @@ exports.getHomePage = async (req, res) => {
             title: 'Error', 
             welcomeMessage: 'DB Error', 
             newsList: [],
+            activitiesList: [],
             sliders: []
         });
     }
@@ -72,16 +80,25 @@ exports.createPost = async (req, res) => {
 exports.getNewsListPage = async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
+        const searchQuery = (req.query.q || '').trim();
         const limit = 9;
         const offset = (page - 1) * limit;
 
-        // ดึงข่าวที่เผยแพร่
-        const news = await News.getPublished(limit, offset);
-        
-        // ตรวจนับจำนวนข่าวทั้งหมด
-        const allNews = await News.getPublished();
-        const totalNews = allNews.length;
-        const totalPages = Math.ceil(totalNews / limit);
+        let news, allNews, totalNews, totalPages;
+
+        if (searchQuery) {
+            // ค้นหาข่าวที่ตรงกับคำค้นหา
+            news = await News.searchPublished(searchQuery, limit, offset);
+            allNews = await News.searchPublished(searchQuery);
+            totalNews = allNews.length;
+            totalPages = Math.ceil(totalNews / limit) || 1;
+        } else {
+            // แสดงข่าวทั้งหมด
+            news = await News.getPublished(limit, offset);
+            allNews = await News.getPublished();
+            totalNews = allNews.length;
+            totalPages = Math.ceil(totalNews / limit);
+        }
 
         // ปรับรูปภาพให้ถูกต้อง
         const newsForView = news.map((item) => ({
@@ -94,7 +111,8 @@ exports.getNewsListPage = async (req, res) => {
             newsList: newsForView,
             currentPage: page,
             totalPages: totalPages,
-            totalNews: totalNews
+            totalNews: totalNews,
+            searchQuery
         });
     } catch (error) {
         console.error('Error fetching news list:', error);
@@ -103,7 +121,58 @@ exports.getNewsListPage = async (req, res) => {
             newsList: [],
             currentPage: 1,
             totalPages: 1,
-            totalNews: 0
+            totalNews: 0,
+            searchQuery: ''
+        });
+    }
+};
+
+// หน้าดูข่าวกิจกรรมทั้งหมด
+exports.getActivitiesListPage = async (req, res) => {
+    try {
+        const page = parseInt(req.query.page, 10) || 1;
+        const searchQuery = (req.query.q || '').trim();
+        const limit = 9;
+        const offset = (page - 1) * limit;
+
+        let activities, allActivities, totalActivities, totalPages;
+
+        if (searchQuery) {
+            // ค้นหาข่าวกิจกรรมที่ตรงกับคำค้นหา
+            activities = await Activity.searchPublished(searchQuery, limit, offset);
+            allActivities = await Activity.searchPublished(searchQuery);
+            totalActivities = allActivities.length;
+            totalPages = Math.ceil(totalActivities / limit) || 1;
+        } else {
+            // แสดงข่าวกิจกรรมทั้งหมด
+            activities = await Activity.getPublished(limit, offset);
+            allActivities = await Activity.getPublished();
+            totalActivities = allActivities.length;
+            totalPages = Math.ceil(totalActivities / limit) || 1;
+        }
+
+        const activitiesForView = activities.map((item) => ({
+            ...item,
+            image_preview_url: normalizeImageUrlForDisplay(item.image_url)
+        }));
+
+        res.render('home/activity', {
+            title: 'ข่าวกิจกรรม | เทศบาลนครปากเกร็ด',
+            activitiesList: activitiesForView,
+            currentPage: page,
+            totalPages,
+            totalActivities,
+            searchQuery
+        });
+    } catch (error) {
+        console.error('Error fetching activities list:', error);
+        res.render('home/activity', {
+            title: 'Error',
+            activitiesList: [],
+            currentPage: 1,
+            totalPages: 1,
+            totalActivities: 0,
+            searchQuery: ''
         });
     }
 };

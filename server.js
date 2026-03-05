@@ -5,6 +5,7 @@ const homeController = require('./controllers/homeController');
 const adminController = require('./controllers/adminController');
 const sliderUpload = require('./middlewares/sliderUpload');
 const newsUpload = require('./middlewares/newsUpload');
+const activityUpload = require('./middlewares/activityUpload');
 
 // 1. ตั้งค่า View Engine เป็น EJS
 app.set('view engine', 'ejs');
@@ -26,6 +27,9 @@ app.get('/', homeController.getHomePage);
 
 // หน้าดูข่าวทั้งหมด
 app.get('/news', homeController.getNewsListPage);
+
+// หน้าดูข่าวกิจกรรมทั้งหมด
+app.get('/activities', homeController.getActivitiesListPage);
 
 // ========== Admin Routes ==========
 // Dashboard
@@ -64,10 +68,28 @@ app.post('/admin/sliders/edit/:id', sliderUpload, adminController.updateSlider);
 app.post('/admin/sliders/delete/:id', adminController.deleteSlider);
 app.post('/admin/sliders/toggle/:id', adminController.toggleSliderStatus);
 
-// Data Migration from Joomla
+// จัดการข่าวกิจกรรม
+app.get('/admin/activities', adminController.getActivitiesList);
+app.get('/admin/activities/add', adminController.getActivityAddForm);
+app.post('/admin/activities/add', activityUpload, adminController.createActivity);
+app.get('/admin/activities/edit/:id', adminController.getActivityEditForm);
+app.post('/admin/activities/edit/:id', activityUpload, adminController.updateActivity);
+app.post('/admin/activities/delete/:id', adminController.deleteActivity);
+app.post('/admin/activities/delete-multiple', adminController.deleteActivitiesMultiple);
+app.post('/admin/activities/toggle-publish/:id', adminController.toggleActivityPublish);
+app.post('/admin/activities/toggle-featured/:id',  adminController.toggleActivityFeatured);
+app.get('/admin/activities/:id', adminController.getActivityDetail);
+
+// Data Migration from Joomla - News
 app.get('/admin/migration', adminController.getMigrationDashboard);
 app.post('/admin/migration/news/preview', adminController.previewMigrationNewsFromJoomla);
 app.post('/admin/migration/news', adminController.migrateNewsFromJoomla);
+
+// Data Migration from Joomla - Activities  
+app.post('/admin/migration/activities/preview', adminController.previewMigrationActivitiesFromJoomla);
+app.post('/admin/migration/activities', adminController.migrateActivitiesFromJoomla);
+
+// Joomla DB Status
 app.get('/admin/migration/check-connection', adminController.checkJoomlaConnection);
 
 // หน้าจัดการเก่า (redirect ไป dashboard)

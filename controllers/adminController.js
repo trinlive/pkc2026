@@ -2,10 +2,12 @@ const fs = require('fs').promises;
 const path = require('path');
 const Slider = require('../models/sliderModel');
 const News = require('../models/newsModel');
+const Activity = require('../models/activityModel');
 const JoomlaDB = require('../models/joomla-db');
 
 const DESTINATION_MENU_MAP = {
-    news: 'ข่าวประชาสัมพันธ์'
+    news: 'ข่าวประชาสัมพันธ์',
+    activities: 'ข่าวกิจกรรม'
 };
 
 /**
@@ -246,16 +248,98 @@ const copyThumbnailFromJoomla = async (originalImageUrl, postedDate = null) => {
 
 
 /**
+ * คัดลอก Thumbnail จาก Joomla ไปยัง /uploads/news_activity/ สำหรับ activities
+ * @param {string} originalImageUrl - URL รูปภาพจาก Joomla (อาจมี #joomlaImage://...)
+ * @param {Date} postedDate - วันที่ลงข่าว
+ * @returns {Promise<string|null>} - path ของรูปที่บันทึก หรือ null ถ้าไม่สำเร็จ
+ */
+const copyThumbnailFromJoomlaForActivities = async (originalImageUrl, postedDate = null) => {
+    if (!originalImageUrl) return null;
+
+    try {
+        const joomlaImagesPath = '/var/www/vhosts/pakkretcity.go.th/httpdocs/images';
+        const npakkretImagesPath = '/var/www/vhosts/pakkretcity.go.th/n.pakkretcity.go.th/public/uploads/news_activity';
+
+        // Clean URL (remove fragment)
+        const cleanUrl = cleanImageUrl(originalImageUrl);
+        
+        // ตรวจสอบว่า path มี images/ หรือ /images/ (Joomla format)
+        if (!cleanUrl || (!cleanUrl.includes('images/'))) {
+            return null; // ถ้าไม่ใช่ Joomla path ให้คืน null
+        }
+
+        // สร้าง timestamp
+        const generateTimestamp = (date) => {
+            if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
+                date = new Date();
+            }
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const hours = String(date.getHours()).padStart(2, '0');
+            const mins = String(date.getMinutes()).padStart(2, '0');
+            const secs = String(date.getSeconds()).padStart(2, '0');
+            return `${year}${month}${day}_${hours}${mins}${secs}`;
+        };
+
+        const timestamp = generateTimestamp(postedDate);
+
+        // แยก image path จาก cleanUrl
+        let imagePath;
+        if (cleanUrl.startsWith('images/')) {
+            imagePath = cleanUrl; // "images/activity2026/file.jpg"
+        } else if (cleanUrl.startsWith('/images/')) {
+            imagePath = cleanUrl.substring(1); // remove leading / → "images/activity2026/file.jpg"
+        } else {
+            return null;
+        }
+
+        // source base คือ .../httpdocs/images ดังนั้นต้องตัด prefix images/ ออกก่อน join
+        const relativeToImagesRoot = imagePath.replace(/^images\//i, '');
+        const sourcePath = path.join(joomlaImagesPath, relativeToImagesRoot);
+        
+        // ตรวจสอบว่าไฟล์ต้นทางมีอยู่
+        await fs.access(sourcePath);
+
+        // สร้างโฟลเดอร์ปลายทางถ้ายังไม่มี
+        await fs.mkdir(npakkretImagesPath, { recursive: true });
+
+        // ดึง extension และสร้างชื่อไฟล์ใหม่ (activity_ prefix for activities)
+        const fileExt = path.extname(imagePath).toLowerCase() || '.jpg';
+        const newFilename = `activity_${timestamp}_thumb${fileExt}`;
+        const destPath = path.join(npakkretImagesPath, newFilename);
+
+        // คัดลอกไฟล์
+        await fs.copyFile(sourcePath, destPath);
+
+        // คืน destination path
+        return `/uploads/news_activity/${newFilename}`;
+
+    } catch (error) {
+        console.error('Error copying thumbnail from Joomla for activities:', error);
+        return null; // ถ้า copy ไม่ได้ให้คืน null
+    }
+};
+
+/**
  * ดึงและคัดลอกไฟล์แนบ (PDF, JPG, PNG) จาก Joomla HTML content
- * @param {string} htmlContent - HTML ที่มี <a href="...pdf/jpg/png">
+ * @param {string} htmlContent - HTML ที่มี <a href="...pdf/jpg/png"> หรือ <img src="...jpg/png">
  * @param {Date} postedDate - วันที่ลงข่าวสำหรับสร้าง timestamp
+ * @param {{destinationMenu?: 'news'|'activities', includeImageSrcFallback?: boolean}} options
  * @returns {Promise<{attachmentUrl: string|null, copiedAttachments: Array, errors: Array}>}
  */
-const extractAndCopyAttachmentsFromJoomla = async (htmlContent, postedDate = null) => {
+const extractAndCopyAttachmentsFromJoomla = async (htmlContent, postedDate = null, options = {}) => {
     if (!htmlContent) return { attachmentUrl: null, copiedAttachments: [], errors: [] };
 
     const joomlaBasePath = '/var/www/vhosts/pakkretcity.go.th/httpdocs';
-    const npakkretAttachmentsPath = '/var/www/vhosts/pakkretcity.go.th/n.pakkretcity.go.th/public/uploads/news/attachments';
+    const destinationMenu = options.destinationMenu === 'activities' ? 'activities' : 'news';
+    const includeImageSrcFallback = options.includeImageSrcFallback === true;
+    const attachmentUploadPrefix = destinationMenu === 'activities'
+        ? '/uploads/news_activity/attachments'
+        : '/uploads/news/attachments';
+    const npakkretAttachmentsPath = destinationMenu === 'activities'
+        ? '/var/www/vhosts/pakkretcity.go.th/n.pakkretcity.go.th/public/uploads/news_activity/attachments'
+        : '/var/www/vhosts/pakkretcity.go.th/n.pakkretcity.go.th/public/uploads/news/attachments';
     
     // สร้าง timestamp จากวันที่ลงข่าว
     const generateTimestamp = (date) => {
@@ -278,6 +362,7 @@ const extractAndCopyAttachmentsFromJoomla = async (htmlContent, postedDate = nul
     // Regex เพื่อหา <a href="..."> ที่ชี้ไปยังไฟล์ PDF, JPG, PNG, JPEG
     // รองรับ: images/pdf/..., /images/pdf/..., https://pakkretcity.go.th/images/...
     const attachmentPattern = /<a[^>]+href=["']([^"']+\.(pdf|jpg|jpeg|png|PDF|JPG|JPEG|PNG))["'][^>]*>/gi;
+    const imageSrcPattern = /<img[^>]+src=["']([^"']+\.(jpg|jpeg|png|JPG|JPEG|PNG))["'][^>]*>/gi;
     
     const foundAttachments = new Set();
     const matches = htmlContent.matchAll(attachmentPattern);
@@ -291,6 +376,18 @@ const extractAndCopyAttachmentsFromJoomla = async (htmlContent, postedDate = nul
         }
         
         foundAttachments.add(attachmentUrl);
+    }
+
+    // สำหรับ activities: ถ้าไม่มี <a href> ให้ fallback ใช้รูปแรกจาก <img src>
+    if (includeImageSrcFallback && foundAttachments.size === 0) {
+        const imageMatch = imageSrcPattern.exec(htmlContent);
+        if (imageMatch && imageMatch[1]) {
+            let imageUrl = imageMatch[1];
+            if (imageUrl.includes('pakkretcity.go.th')) {
+                imageUrl = imageUrl.replace(/^https?:\/\/(www\.)?pakkretcity\.go\.th\/?/i, '');
+            }
+            foundAttachments.add(imageUrl);
+        }
     }
 
     // คัดลอกไฟล์แนบแต่ละอัน
@@ -322,7 +419,7 @@ const extractAndCopyAttachmentsFromJoomla = async (htmlContent, postedDate = nul
                 // คัดลอกไฟล์
                 await fs.copyFile(sourcePath, destPath);
                 
-                const newPath = `/uploads/news/attachments/${newFilename}`;
+                const newPath = `${attachmentUploadPrefix}/${newFilename}`;
                 
                 copiedAttachments.push({
                     original: attachmentUrl,
@@ -1061,9 +1158,9 @@ const adminController = {
             const {
                 limit = 10,
                 offset = 0,
-                categoryName = 'ข่าวประชาสัมพันธ์ | News'
+                categoryName = 'ข่าวประชาสัมพันธ์ | News',
+                destinationMenu = 'news'
             } = req.body;
-            const destinationMenu = 'news';
             const numericLimit = parseInt(limit, 10) || 10;
             const numericOffset = parseInt(offset, 10) || 0;
 
@@ -1133,11 +1230,11 @@ const adminController = {
                 limit = 10,
                 offset = 0,
                 categoryName = 'ข่าวประชาสัมพันธ์ | News',
+                destinationMenu = 'news',
                 useAiSummary = true,
                 retryExisting = false,
                 articleIds = []
             } = req.body;
-            const destinationMenu = 'news';
             const numericLimit = parseInt(limit, 10) || 10;
             const numericOffset = parseInt(offset, 10) || 0;
             const shouldRetryExisting = retryExisting === true || retryExisting === 'true';
@@ -1363,6 +1460,641 @@ const adminController = {
             res.status(500).json({
                 success: false,
                 message: 'ไม่สามารถเชื่อมต่อ Joomla DB ได้',
+                error: error.message
+            });
+        }
+    },
+
+    // ========================================
+    // ACTIVITIES / ข่าวกิจกรรม
+    // ========================================
+
+    // ดึงรายการข่าวกิจกรรมจาก Joomla (Category ID: 19)
+    getActivitiesList: async (req, res) => {
+        try {
+            // ดึงค่า limit จาก query parameter (default: 30)
+            let limitParam = req.query.limit || '30';
+            const searchQuery = (req.query.q || '').trim();
+            let limit = null;
+            
+            // แปลงค่า limit
+            if (limitParam === 'all') {
+                limit = null; // ไม่มี limit
+            } else {
+                limit = parseInt(limitParam, 10) || 30;
+            }
+            
+            const activities = await Activity.getAll(limit, 0, searchQuery);
+            const homepageActivities = await Activity.getHomepageActivities(6); // ดึงข่าวที่แสดงในหน้า Home
+            const totalCount = await Activity.getCount('all');
+            const filteredCount = await Activity.countByTitle(searchQuery);
+            const publishedCount = await Activity.getCount('published');
+            const draftCount = await Activity.getCount('draft');
+            const featuredCount = await Activity.getCount('featured');
+
+            const activitiesForView = activities.map((item) => ({
+                ...item,
+                image_preview_url: normalizeImageUrlForDisplay(item.image_url)
+            }));
+            
+            res.render('admin/activities-list', { 
+                title: 'จัดการข่าวกิจกรรม',
+                currentPage: 'activities',
+                activitiesList: activitiesForView,
+                homepageActivities: homepageActivities, // ส่งข่าวหน้า Home ไปแสดงด้วย
+                searchQuery,
+                currentLimit: limitParam === 'all' ? 'all' : parseInt(limitParam, 10) || 30,
+                statistics: {
+                    total: totalCount,
+                    filteredTotal: filteredCount,
+                    published: publishedCount,
+                    draft: draftCount,
+                    featured: featuredCount
+                }
+            });
+        } catch (error) {
+            console.error('Error fetching activities:', error);
+            res.status(500).send('ไม่สามารถโหลดข้อมูลข่าวกิจกรรมได้');
+        }
+    },
+
+    // ดึงข้อมูลข่าวกิจกรรม 1 รายการ
+    getActivityDetail: async (req, res) => {
+        try {
+            const { id } = req.params;
+            const article = await JoomlaDB.getArticleById(id);
+
+            if (!article) {
+                return res.status(404).render('admin/admin-panel', {
+                    title: 'Not Found',
+                    currentPage: 'activities',
+                    error: 'ไม่พบข่าวกิจกรรมที่ต้องการ'
+                });
+            }
+
+            // ทำความสะอาด image URLs
+            const activity = {
+                ...article,
+                display_image: normalizeImageUrlForDisplay(article.images),
+                clean_images: cleanImageUrl(article.images)
+            };
+
+            res.render('admin/activity-view', {
+                title: 'ดูรายละเอียดข่าวกิจกรรม',
+                currentPage: 'activities',
+                activity
+            });
+        } catch (error) {
+            console.error('Error fetching activity detail:', error);
+            res.status(500).render('admin/admin-panel', {
+                title: 'Error',
+                currentPage: 'activities',
+                error: 'เกิดข้อผิดพลาดในการดึงข้อมูล: ' + error.message
+            });
+        }
+    },
+
+    // ========================================
+    // ACTIVITIES CRUD
+    // ========================================
+
+    // หน้าเพิ่มข่าวกิจกรรมใหม่
+    getActivityAddForm: async (req, res) => {
+        try {
+            res.render('admin/activities-add', { 
+                title: 'เพิ่มข่าวกิจกรรมใหม่',
+                currentPage: 'activities',
+                errorMessage: '',
+                formData: {}
+            });
+        } catch (error) {
+            res.status(500).send('ไม่สามารถโหลดข้อมูลได้');
+        }
+    },
+
+    // บันทึกข่าวกิจกรรมใหม่
+    createActivity: async (req, res) => {
+        try {
+            const { title, description, date_posted, is_published } = req.body;
+            const imageUrl = req.uploadedImage || '';
+            const attachmentUrl = req.uploadedAttachment || '';
+
+            if (!title) {
+                return res.status(400).render('admin/activities-add', {
+                    title: 'เพิ่มข่าวกิจกรรมใหม่',
+                    currentPage: 'activities',
+                    errorMessage: 'กรุณากรอกหัวข้อข่าวกิจกรรม',
+                    formData: req.body
+                });
+            }
+
+            const createdBy = 'Admin';
+            const activityDate = date_posted || new Date();
+            
+            await Activity.create(
+                title,
+                description || '',
+                imageUrl,
+                attachmentUrl,
+                activityDate,
+                is_published ? 1 : 0,
+                createdBy,
+                'ข่าวกิจกรรม'
+            );
+
+            res.redirect('/admin/activities');
+        } catch (error) {
+            console.error('Error creating activity:', error);
+            res.status(500).render('admin/activities-add', {
+                title: 'เพิ่มข่าวกิจกรรมใหม่',
+                currentPage: 'activities',
+                errorMessage: 'เกิดข้อผิดพลาดในการบันทึกข่าวกิจกรรม',
+                formData: req.body
+            });
+        }
+    },
+
+    // หน้าแก้ไขข่าวกิจกรรม
+    getActivityEditForm: async (req, res) => {
+        try {
+            const id = req.params.id;
+            const activity = await Activity.getById(id);
+            
+            if (!activity) {
+                return res.status(404).send('ไม่พบข่าวกิจกรรมนี้');
+            }
+
+            const activityForView = {
+                ...activity,
+                image_preview_url: normalizeImageUrlForDisplay(activity.image_url)
+            };
+            
+            res.render('admin/activities-edit', { 
+                title: 'แก้ไขข่าวกิจกรรม',
+                currentPage: 'activities',
+                errorMessage: '',
+                activity: activityForView
+            });
+        } catch (error) {
+            console.error('Error fetching activity:', error);
+            res.status(500).send('ไม่สามารถโหลดข้อมูลข่าวกิจกรรมได้');
+        }
+    },
+
+    // อัพเดทข่าวกิจกรรม
+    updateActivity: async (req, res) => {
+        try {
+            const id = req.params.id;
+            const { title, description, date_posted, is_published, is_featured } = req.body;
+            
+            const existingActivity = await Activity.getById(id);
+            if (!existingActivity) {
+                return res.status(404).send('ไม่พบข่าวกิจกรรมนี้');
+            }
+
+            if (!title) {
+                return res.status(400).render('admin/activities-edit', {
+                    title: 'แก้ไขข่าวกิจกรรม',
+                    currentPage: 'activities',
+                    errorMessage: 'กรุณากรอกหัวข้อข่าวกิจกรรม',
+                    activity: { ...existingActivity, ...req.body }
+                });
+            }
+
+            const imageUrl = req.uploadedImage || existingActivity.image_url;
+            const attachmentUrl = req.uploadedAttachment || existingActivity.attachment_url || '';
+            const activityDate = date_posted || existingActivity.date_posted;
+
+            await Activity.update(
+                id,
+                title,
+                description || '',
+                imageUrl,
+                attachmentUrl,
+                activityDate,
+                is_published ? 1 : 0,
+                is_featured ? 1 : 0,
+                'ข่าวกิจกรรม'
+            );
+
+            res.redirect('/admin/activities');
+        } catch (error) {
+            console.error('Error updating activity:', error);
+            const id = req.params.id;
+            const existingActivity = await Activity.getById(id);
+            res.status(500).render('admin/activities-edit', {
+                title: 'แก้ไขข่าวกิจกรรม',
+                currentPage: 'activities',
+                errorMessage: 'เกิดข้อผิดพลาดในการอัพเดทข่าวกิจกรรม',
+                activity: existingActivity
+            });
+        }
+    },
+
+    // ลบข่าวกิจกรรม
+    deleteActivity: async (req, res) => {
+        try {
+            const id = req.params.id;
+            const activity = await Activity.getById(id);
+            
+            if (!activity) {
+                return res.status(404).send('ไม่พบข่าวกิจกรรมนี้');
+            }
+
+            // ลบไฟล์รูปภาพเฉพาะปลายทางเท่านั้น (/public/uploads/news)
+            if (activity.image_url) {
+                const destinationImagePath = resolveDestinationNewsImagePath(activity.image_url);
+                if (destinationImagePath) {
+                    try {
+                        await fs.unlink(destinationImagePath);
+                        console.log(`Deleted destination image: ${destinationImagePath}`);
+                    } catch (fileError) {
+                        console.warn(`Warning: Could not delete destination image for activity ${id}:`, fileError);
+                    }
+                }
+            }
+
+            await Activity.delete(id);
+            res.redirect('/admin/activities');
+        } catch (error) {
+            console.error('Error deleting activity:', error);
+            res.status(500).send('ไม่สามารถลบข่าวกิจกรรมได้');
+        }
+    },
+
+    // ลบข่าวกิจกรรมหลายรายการ (AJAX)
+    deleteActivitiesMultiple: async (req, res) => {
+        try {
+            const { ids } = req.body;
+
+            if (!ids || !Array.isArray(ids) || ids.length === 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'ต้องระบุ ID ของข่าวกิจกรรมที่ต้องการลบ'
+                });
+            }
+
+            let deletedCount = 0;
+            let errorCount = 0;
+            const errors = [];
+
+            for (const id of ids) {
+                try {
+                    const activity = await Activity.getById(id);
+                    if (!activity) {
+                        errorCount++;
+                        errors.push({ id, error: 'ไม่พบข่าวกิจกรรมนี้' });
+                        continue;
+                    }
+
+                    // ลบไฟล์รูปภาพเฉพาะปลายทางเท่านั้น
+                    if (activity.image_url) {
+                        const destinationImagePath = resolveDestinationNewsImagePath(activity.image_url);
+                        if (destinationImagePath) {
+                            try {
+                                await fs.unlink(destinationImagePath);
+                                console.log(`Deleted destination image: ${destinationImagePath}`);
+                            } catch (fileError) {
+                                console.warn(`Warning: Could not delete destination image for activity ${id}:`, fileError);
+                            }
+                        }
+                    }
+
+                    await Activity.delete(id);
+                    deletedCount++;
+                } catch (err) {
+                    errorCount++;
+                    errors.push({ id, error: err.message });
+                    console.error(`Error deleting activity ${id}:`, err);
+                }
+            }
+
+            res.json({
+                success: true,
+                message: `ลบสำเร็จ ${deletedCount} รายการ${errorCount > 0 ? `, ล้มเหลว ${errorCount} รายการ` : ''}`,
+                deletedCount,
+                errorCount,
+                errors: errors.length > 0 ? errors : undefined
+            });
+        } catch (error) {
+            console.error('Error in deleteActivitiesMultiple:', error);
+            res.status(500).json({
+                success: false,
+                message: 'เกิดข้อผิดพลาดในการลบข่าวกิจกรรม',
+                error: error.message
+            });
+        }
+    },
+
+    // เปลี่ยนสถานะเผยแพร่
+    toggleActivityPublish: async (req, res) => {
+        try {
+            const id = req.params.id;
+            await Activity.togglePublish(id);
+            res.redirect('/admin/activities');
+        } catch (error) {
+            console.error('Error toggling publish status:', error);
+            res.status(500).send('ไม่สามารถเปลี่ยนสถานะได้');
+        }
+    },
+
+    // เปลี่ยนสถานะข่าวกิจกรรมเด่น
+    toggleActivityFeatured: async (req, res) => {
+        try {
+            const id = req.params.id;
+            await Activity.toggleFeatured(id);
+            res.redirect('/admin/activities');
+        } catch (error) {
+            console.error('Error toggling featured status:', error);
+            res.status(500).send('ไม่สามารถเปลี่ยนสถานะได้');
+        }
+    },
+
+    // ========================================
+    // ACTIVITIES MIGRATION
+    // ========================================
+
+    // Preview: ดึงข่าวกิจกรรมจาก Joomla ก่อน migrate
+    previewMigrationActivitiesFromJoomla: async (req, res) => {
+        try {
+            const {
+                limit = 10,
+                offset = 0,
+                categoryName = 'ข่าวกิจกรรม | Activity'
+            } = req.body;
+            const destinationMenu = 'activities';
+            const numericLimit = parseInt(limit, 10) || 10;
+            const numericOffset = parseInt(offset, 10) || 0;
+
+            const joomlaArticles = await JoomlaDB.getAllArticles(null, 0, 1);
+            const filteredArticles = categoryName
+                ? joomlaArticles.filter(art => art.category_name === categoryName)
+                : joomlaArticles;
+
+            const articlesToPreview = filteredArticles.slice(numericOffset, numericOffset + numericLimit);
+            const willAdd = [];
+            const willSkip = [];
+
+            for (const article of articlesToPreview) {
+                const newsCategory = resolveDestinationCategory(destinationMenu, article.category_name);
+
+                const postedDate = new Date(article.publish_up);
+                // Use Activity model instead of News model for activities
+                const alreadyExists = await Activity.existsForMigration(
+                    article.title,
+                    postedDate
+                );
+
+                const item = {
+                    articleId: article.id,
+                    title: article.title,
+                    categoryName: newsCategory,
+                    datePosted: postedDate,
+                    joomlaCategory: article.category_name || '',
+                    destinationMenu
+                };
+
+                if (alreadyExists) {
+                    willSkip.push(item);
+                } else {
+                    willAdd.push(item);
+                }
+            }
+
+            res.json({
+                success: true,
+                message: `Preview completed: will add ${willAdd.length}, will skip ${willSkip.length}`,
+                statistics: {
+                    totalChecked: articlesToPreview.length,
+                    willAddCount: willAdd.length,
+                    willSkipCount: willSkip.length,
+                    destinationCategory: resolveDestinationCategory(destinationMenu, categoryName)
+                },
+                preview: {
+                    willAdd,
+                    willSkip
+                }
+            });
+        } catch (error) {
+            console.error('Migration preview error:', error);
+            res.status(500).json({
+                success: false,
+                message: 'เกิดข้อผิดพลาดในการ preview ข้อมูล',
+                error: error.message
+            });
+        }
+    },
+
+    // Migrate: ย้ายข่าวกิจกรรมจาก Joomla มาระบบใหม่
+    migrateActivitiesFromJoomla: async (req, res) => {
+        try {
+            const {
+                limit = 10,
+                offset = 0,
+                categoryName = 'ข่าวกิจกรรม | Activity',
+                useAiSummary = true,
+                retryExisting = false,
+                articleIds = []
+            } = req.body;
+            const destinationMenu = 'activities';
+            const numericLimit = parseInt(limit, 10) || 10;
+            const numericOffset = parseInt(offset, 10) || 0;
+            const shouldRetryExisting = retryExisting === true || retryExisting === 'true';
+            const selectedArticleIds = Array.isArray(articleIds)
+                ? articleIds
+                    .map((value) => parseInt(value, 10))
+                    .filter((value) => Number.isInteger(value) && value > 0)
+                : [];
+
+            // 1. ดึงข่าวจาก Joomla DB
+            const joomlaArticles = await JoomlaDB.getAllArticles(null, 0, 1);
+            const filteredArticles = categoryName
+                ? joomlaArticles.filter(art => art.category_name === categoryName)
+                : joomlaArticles;
+            const articlesToMigrate = selectedArticleIds.length > 0
+                ? filteredArticles.filter(art => selectedArticleIds.includes(art.id))
+                : filteredArticles.slice(numericOffset, numericOffset + numericLimit);
+
+            const successCount = { value: 0 };
+            const updatedCount = { value: 0 };
+            const skippedCount = { value: 0 };
+            const errorCount = { value: 0 };
+            const errors = [];
+            const allCopiedImages = [];
+            const allImageErrors = [];
+            const allCopiedAttachments = [];
+            const allAttachmentErrors = [];
+
+            // 2. Migrate แบบ batch (หลายรายการพร้อมกัน)
+            const BATCH_SIZE = 5;
+            const totalBatches = Math.ceil(articlesToMigrate.length / BATCH_SIZE);
+
+            for (let batchIdx = 0; batchIdx < totalBatches; batchIdx++) {
+                const batchStart = batchIdx * BATCH_SIZE;
+                const batchEnd = Math.min(batchStart + BATCH_SIZE, articlesToMigrate.length);
+                const batchArticles = articlesToMigrate.slice(batchStart, batchEnd);
+
+                const batchPromises = batchArticles.map(async (article) => {
+                    try {
+                        const newsCategory = resolveDestinationCategory(destinationMenu, article.category_name);
+                        const postedDate = new Date(article.publish_up);
+
+                        const existingBySource = await Activity.getByMigrationSource(article.id);
+                        const alreadyExists = await Activity.existsForMigration(
+                            article.title,
+                            postedDate
+                        );
+
+                        if (alreadyExists && !shouldRetryExisting) {
+                            skippedCount.value++;
+                            return;
+                        }
+
+                        // 🖼️ คัดลอกรูปภาพจาก Joomla และแก้ไข path พร้อมเปลี่ยนชื่อเป็น timestamp
+                        const rawDescription = article.fulltext || article.introtext || '';
+                        const imageCopyResult = await copyImagesFromJoomla(rawDescription, postedDate);
+                        const finalDescription = imageCopyResult.updatedContent || '';
+                        let finalImageUrl = null;
+                        
+                        // ✨ ใช้ copyThumbnailFromJoomlaForActivities สำหรับ activities แทน copyThumbnailFromJoomla
+                        // Extract image path from JSON object if article.images is an object or string
+                        if (article.images) {
+                            let imageUrlToProcess = article.images;
+                            
+                            // Handle JSON object format from Joomla (with image_intro, image_fulltext, etc.)
+                            if (typeof article.images === 'object' && article.images !== null) {
+                                if (article.images.image_intro) {
+                                    imageUrlToProcess = article.images.image_intro;
+                                }
+                            } else if (typeof article.images === 'string') {
+                                // If it's a string JSON, parse it
+                                try {
+                                    const parsed = JSON.parse(article.images);
+                                    if (parsed.image_intro) {
+                                        imageUrlToProcess = parsed.image_intro;
+                                    }
+                                } catch (e) {
+                                    // If parsing fails, use the raw string
+                                }
+                            }
+                            
+                            finalImageUrl = await copyThumbnailFromJoomlaForActivities(imageUrlToProcess, postedDate);
+                        }
+
+                        const attachmentResult = await extractAndCopyAttachmentsFromJoomla(rawDescription, postedDate, {
+                            destinationMenu: 'activities',
+                            includeImageSrcFallback: true
+                        });
+                        let finalAttachmentUrl = attachmentResult.attachmentUrl || null;
+
+                        if (!finalAttachmentUrl && imageCopyResult.copiedImages && imageCopyResult.copiedImages.length > 1) {
+                            finalAttachmentUrl = imageCopyResult.copiedImages[imageCopyResult.copiedImages.length - 1].copied;
+                        }
+
+                        if (imageCopyResult.copiedImages.length > 0) {
+                            allCopiedImages.push({
+                                articleId: article.id,
+                                articleTitle: article.title,
+                                images: imageCopyResult.copiedImages
+                            });
+                        }
+                        if (imageCopyResult.errors.length > 0) {
+                            allImageErrors.push({
+                                articleId: article.id,
+                                articleTitle: article.title,
+                                errors: imageCopyResult.errors
+                            });
+                        }
+
+                        if (attachmentResult.copiedAttachments.length > 0) {
+                            allCopiedAttachments.push({
+                                articleId: article.id,
+                                articleTitle: article.title,
+                                attachments: attachmentResult.copiedAttachments
+                            });
+                        }
+                        if (attachmentResult.errors.length > 0) {
+                            allAttachmentErrors.push({
+                                articleId: article.id,
+                                articleTitle: article.title,
+                                errors: attachmentResult.errors
+                            });
+                        }
+
+                        if (existingBySource && shouldRetryExisting) {
+                            await Activity.updateMigratedFields(
+                                existingBySource.id,
+                                finalDescription,
+                                finalImageUrl || existingBySource.image_url,
+                                finalAttachmentUrl || existingBySource.attachment_url
+                            );
+                            updatedCount.value++;
+                        } else {
+                            await Activity.create(
+                                article.title,
+                                finalDescription,
+                                finalImageUrl,
+                                finalAttachmentUrl,
+                                postedDate,
+                                1, // is_published
+                                `joomla:${article.id}`
+                            );
+
+                            successCount.value++;
+                        }
+                    } catch (err) {
+                        errorCount.value++;
+                        errors.push({
+                            articleId: article.id,
+                            title: article.title,
+                            error: err.message
+                        });
+                        console.error(`Error migrating article ${article.id}:`, err);
+                    }
+                });
+
+                await Promise.all(batchPromises);
+            }
+
+            const totalImagesCopied = allCopiedImages.reduce((sum, item) => sum + item.images.length, 0);
+            const totalImageErrors = allImageErrors.reduce((sum, item) => sum + item.errors.length, 0);
+            const totalAttachmentsCopied = allCopiedAttachments.reduce((sum, item) => sum + item.attachments.length, 0);
+            const totalAttachmentErrors = allAttachmentErrors.reduce((sum, item) => sum + item.errors.length, 0);
+
+            res.json({
+                success: true,
+                message: `Migration completed: ${successCount.value} created, ${updatedCount.value} updated, ${skippedCount.value} skipped, ${errorCount.value} errors | Images: ${totalImagesCopied} copied, ${totalImageErrors} errors | Attachments: ${totalAttachmentsCopied} copied, ${totalAttachmentErrors} errors`,
+                statistics: {
+                    totalProcessed: articlesToMigrate.length,
+                    successCount: successCount.value,
+                    updatedCount: updatedCount.value,
+                    skippedCount: skippedCount.value,
+                    errorCount: errorCount.value,
+                    errors,
+                    destinationMenu,
+                    destinationCategory: resolveDestinationCategory(destinationMenu, categoryName),
+                    imagesCopied: totalImagesCopied,
+                    imageErrors: totalImageErrors,
+                    attachmentsCopied: totalAttachmentsCopied,
+                    attachmentErrors: totalAttachmentErrors,
+                    retryExisting: shouldRetryExisting,
+                    selectedArticleIds
+                },
+                imageDetails: {
+                    copiedImages: allCopiedImages,
+                    imageErrors: allImageErrors
+                },
+                attachmentDetails: {
+                    copiedAttachments: allCopiedAttachments,
+                    attachmentErrors: allAttachmentErrors
+                }
+            });
+
+        } catch (error) {
+            console.error('Migration error:', error);
+            res.status(500).json({
+                success: false,
+                message: 'เกิดข้อผิดพลาดในการ migrate ข้อมูล',
                 error: error.message
             });
         }
