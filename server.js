@@ -6,6 +6,7 @@ const adminController = require('./controllers/adminController');
 const sliderUpload = require('./middlewares/sliderUpload');
 const newsUpload = require('./middlewares/newsUpload');
 const activityUpload = require('./middlewares/activityUpload');
+const budgetTransferUpload = require('./middlewares/budgetTransferUpload');
 
 // 1. ตั้งค่า View Engine เป็น EJS
 app.set('view engine', 'ejs');
@@ -30,6 +31,9 @@ app.get('/news', homeController.getNewsListPage);
 
 // หน้าดูข่าวกิจกรรมทั้งหมด
 app.get('/activities', homeController.getActivitiesListPage);
+
+// หน้าดูการโอนงบประมาณรายจ่ายประจำปี
+app.get('/budgettransfer', homeController.getBudgetTransferListPage);
 
 // ========== Admin Routes ==========
 // Dashboard
@@ -80,6 +84,17 @@ app.post('/admin/activities/toggle-publish/:id', adminController.toggleActivityP
 app.post('/admin/activities/toggle-featured/:id',  adminController.toggleActivityFeatured);
 app.get('/admin/activities/:id', adminController.getActivityDetail);
 
+// Budget Transfer CRUD Routes
+app.get('/admin/budgettransfer', adminController.getBudgetTransferList);
+app.get('/admin/budgettransfer/add', adminController.getBudgetTransferAddForm);
+app.post('/admin/budgettransfer/add', budgetTransferUpload, adminController.createBudgetTransfer);
+app.get('/admin/budgettransfer/edit/:id', adminController.getBudgetTransferEditForm);
+app.post('/admin/budgettransfer/edit/:id', budgetTransferUpload, adminController.updateBudgetTransfer);
+app.post('/admin/budgettransfer/delete/:id', adminController.deleteBudgetTransfer);
+app.post('/admin/budgettransfer/delete-multiple', adminController.deleteBudgetTransfersMultiple);
+app.post('/admin/budgettransfer/toggle-publish/:id', adminController.toggleBudgetTransferPublish);
+app.post('/admin/budgettransfer/toggle-featured/:id', adminController.toggleBudgetTransferFeatured);
+
 // Data Migration from Joomla - News
 app.get('/admin/migration', adminController.getMigrationDashboard);
 app.post('/admin/migration/news/preview', adminController.previewMigrationNewsFromJoomla);
@@ -88,6 +103,10 @@ app.post('/admin/migration/news', adminController.migrateNewsFromJoomla);
 // Data Migration from Joomla - Activities  
 app.post('/admin/migration/activities/preview', adminController.previewMigrationActivitiesFromJoomla);
 app.post('/admin/migration/activities', adminController.migrateActivitiesFromJoomla);
+
+// Data Migration from Joomla - Budget Transfer
+app.post('/admin/migration/budgettransfer/preview', adminController.previewMigrationBudgetTransferFromJoomla);
+app.post('/admin/migration/budgettransfer', adminController.migrateBudgetTransferFromJoomla);
 
 // Joomla DB Status
 app.get('/admin/migration/check-connection', adminController.checkJoomlaConnection);

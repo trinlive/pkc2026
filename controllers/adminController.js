@@ -3,11 +3,13 @@ const path = require('path');
 const Slider = require('../models/sliderModel');
 const News = require('../models/newsModel');
 const Activity = require('../models/activityModel');
+const BudgetTransfer = require('../models/budgetTransferModel');
 const JoomlaDB = require('../models/joomla-db');
 
 const DESTINATION_MENU_MAP = {
     news: 'ข่าวประชาสัมพันธ์',
-    activities: 'ข่าวกิจกรรม'
+    activities: 'ข่าวกิจกรรม',
+    budgettransfer: 'การโอนงบประมาณรายจ่ายประจำปี'
 };
 
 /**
@@ -332,14 +334,20 @@ const extractAndCopyAttachmentsFromJoomla = async (htmlContent, postedDate = nul
     if (!htmlContent) return { attachmentUrl: null, copiedAttachments: [], errors: [] };
 
     const joomlaBasePath = '/var/www/vhosts/pakkretcity.go.th/httpdocs';
-    const destinationMenu = options.destinationMenu === 'activities' ? 'activities' : 'news';
+    const destinationMenu = ['activities', 'budgettransfer'].includes(options.destinationMenu)
+        ? options.destinationMenu
+        : 'news';
     const includeImageSrcFallback = options.includeImageSrcFallback === true;
     const attachmentUploadPrefix = destinationMenu === 'activities'
         ? '/uploads/news_activity/attachments'
-        : '/uploads/news/attachments';
+        : destinationMenu === 'budgettransfer'
+            ? '/uploads/budget_transfer/attachments'
+            : '/uploads/news/attachments';
     const npakkretAttachmentsPath = destinationMenu === 'activities'
         ? '/var/www/vhosts/pakkretcity.go.th/n.pakkretcity.go.th/public/uploads/news_activity/attachments'
-        : '/var/www/vhosts/pakkretcity.go.th/n.pakkretcity.go.th/public/uploads/news/attachments';
+        : destinationMenu === 'budgettransfer'
+            ? '/var/www/vhosts/pakkretcity.go.th/n.pakkretcity.go.th/public/uploads/budget_transfer/attachments'
+            : '/var/www/vhosts/pakkretcity.go.th/n.pakkretcity.go.th/public/uploads/news/attachments';
     
     // สร้าง timestamp จากวันที่ลงข่าว
     const generateTimestamp = (date) => {
@@ -363,6 +371,7 @@ const extractAndCopyAttachmentsFromJoomla = async (htmlContent, postedDate = nul
     // รองรับ: images/pdf/..., /images/pdf/..., https://pakkretcity.go.th/images/...
     const attachmentPattern = /<a[^>]+href=["']([^"']+\.(pdf|jpg|jpeg|png|PDF|JPG|JPEG|PNG))["'][^>]*>/gi;
     const imageSrcPattern = /<img[^>]+src=["']([^"']+\.(jpg|jpeg|png|JPG|JPEG|PNG))["'][^>]*>/gi;
+    const pdfViewerPattern = /\{pdfviewer\s+file\s*=\s*([^\s}\"]+\.(pdf|jpg|jpeg|png|PDF|JPG|JPEG|PNG))\s*\}/gi;
     
     const foundAttachments = new Set();
     const matches = htmlContent.matchAll(attachmentPattern);
@@ -375,6 +384,18 @@ const extractAndCopyAttachmentsFromJoomla = async (htmlContent, postedDate = nul
             attachmentUrl = attachmentUrl.replace(/^https?:\/\/(www\.)?pakkretcity\.go\.th\/?/i, '');
         }
         
+        foundAttachments.add(attachmentUrl);
+    }
+
+    // รองรับ Joomla plugin tag: {pdfviewer file=/images/pdf67/wd102.pdf }
+    const pdfViewerMatches = htmlContent.matchAll(pdfViewerPattern);
+    for (const match of pdfViewerMatches) {
+        let attachmentUrl = match[1];
+
+        if (attachmentUrl.includes('pakkretcity.go.th')) {
+            attachmentUrl = attachmentUrl.replace(/^https?:\/\/(www\.)?pakkretcity\.go\.th\/?/i, '');
+        }
+
         foundAttachments.add(attachmentUrl);
     }
 
@@ -1320,7 +1341,9 @@ const adminController = {
                     }
 
                     // 📎 ดึงและคัดลอกไฟล์แนบ (PDF, JPG, PNG) จาก HTML content
-                    const attachmentResult = await extractAndCopyAttachmentsFromJoomla(rawDescription, postedDate);
+                    const attachmentResult = await extractAndCopyAttachmentsFromJoomla(rawDescription, postedDate, {
+                        destinationMenu: 'budgettransfer'
+                    });
                     let finalAttachmentUrl = attachmentResult.attachmentUrl || null;
 
                     // 🔄 ลำดับความสำคัญ attachment:
@@ -2098,7 +2121,624 @@ const adminController = {
                 error: error.message
             });
         }
+    },
+
+    // ========== Budget Transfer Migration ==========
+    // Preview Migration สำหรับ Budget Transfer
+    previewMigrationBudgetTransferFromJoomla: async (req, res) => {
+        try {
+            const {
+                limit = 10,
+                offset = 0,
+                categoryName = 'การโอนงบประมาณรายจ่ายประจำปี | New',
+                destinationMenu = 'budgettransfer'
+            } = req.body;
+            const numericLimit = parseInt(limit, 10) || 10;
+            const numericOffset = parseInt(offset, 10) || 0;
+
+            const joomlaArticles = await JoomlaDB.getAllArticles(null, 0, 1);
+            const filteredArticles = categoryName
+                ? joomlaArticles.filter(art => art.category_name === categoryName)
+                : joomlaArticles;
+
+            const articlesToPreview = filteredArticles.slice(numericOffset, numericOffset + numericLimit);
+            const willAdd = [];
+            const willSkip = [];
+
+            for (const article of articlesToPreview) {
+                const categoryForDb = resolveDestinationCategory(destinationMenu, article.category_name);
+
+                const postedDate = new Date(article.publish_up);
+                const alreadyExists = await BudgetTransfer.existsForMigration(
+                    article.title,
+                    postedDate,
+                    categoryForDb
+                );
+
+                const item = {
+                    articleId: article.id,
+                    title: article.title,
+                    categoryName: categoryForDb,
+                    datePosted: postedDate,
+                    joomlaCategory: article.category_name || '',
+                    destinationMenu
+                };
+
+                if (alreadyExists) {
+                    willSkip.push(item);
+                } else {
+                    willAdd.push(item);
+                }
+            }
+
+            res.json({
+                success: true,
+                message: `Preview completed: will add ${willAdd.length}, will skip ${willSkip.length}`,
+                statistics: {
+                    totalChecked: articlesToPreview.length,
+                    willAddCount: willAdd.length,
+                    willSkipCount: willSkip.length,
+                    destinationCategory: resolveDestinationCategory(destinationMenu, categoryName)
+                },
+                preview: {
+                    willAdd,
+                    willSkip
+                }
+            });
+        } catch (error) {
+            console.error('Migration preview error:', error);
+            res.status(500).json({
+                success: false,
+                message: 'เกิดข้อผิดพลาดในการ preview ข้อมูล',
+                error: error.message
+            });
+        }
+    },
+
+    // Migrate Budget Transfer จาก Joomla
+    migrateBudgetTransferFromJoomla: async (req, res) => {
+        try {
+            const {
+                limit = 10,
+                offset = 0,
+                categoryName = 'การโอนงบประมาณรายจ่ายประจำปี | New',
+                destinationMenu = 'budgettransfer',
+                useAiSummary = true,
+                retryExisting = false,
+                articleIds = []
+            } = req.body;
+            const numericLimit = parseInt(limit, 10) || 10;
+            const numericOffset = parseInt(offset, 10) || 0;
+            const shouldRetryExisting = retryExisting === true || retryExisting === 'true';
+            const selectedArticleIds = Array.isArray(articleIds)
+                ? articleIds
+                    .map((value) => parseInt(value, 10))
+                    .filter((value) => Number.isInteger(value) && value > 0)
+                : [];
+
+            // 1. ดึงข่าวจาก Joomla DB
+            const joomlaArticles = await JoomlaDB.getAllArticles(null, 0, 1);
+
+            // กรองเฉพาะหมวดที่ต้องการ
+            const filteredArticles = categoryName 
+                ? joomlaArticles.filter(art => art.category_name === categoryName)
+                : joomlaArticles;
+
+            const scopedArticles = selectedArticleIds.length > 0
+                ? filteredArticles.filter((art) => selectedArticleIds.includes(art.id))
+                : filteredArticles.slice(numericOffset, numericOffset + numericLimit);
+
+            const articlesToMigrate = scopedArticles;
+
+            // 2. แปลงและบันทึกเข้า pkc_nodeweb_db
+            let successCount = 0;
+            let skippedCount = 0;
+            let errorCount = 0;
+            let updatedCount = 0;
+            const errors = [];
+            const allCopiedImages = [];
+            const allImageErrors = [];
+            const allCopiedAttachments = [];
+            const allAttachmentErrors = [];
+
+            for (const article of articlesToMigrate) {
+                try {
+                    // แปลง Joomla images JSON
+                    let imageUrl = null;
+                    if (article.images) {
+                        try {
+                            const imagesData = JSON.parse(article.images);
+                            imageUrl = imagesData.image_intro || imagesData.image_fulltext || null;
+                        } catch (e) {
+                            // ถ้า parse ไม่ได้ ให้เป็น null
+                        }
+                    }
+
+                    const categoryForDb = resolveDestinationCategory(destinationMenu, article.category_name);
+
+                    // สร้างข่าว - รวม introtext และ fulltext
+                    const rawDescription = `${article.introtext || ''}\n\n${article.fulltext || ''}`.trim();
+                    const postedDate = new Date(article.publish_up);
+                    const existingBySource = await BudgetTransfer.getByMigrationSource(article.id);
+
+                    // ป้องกันการ Migration ซ้ำ
+                    const alreadyExists = existingBySource || await BudgetTransfer.existsForMigration(
+                        article.title,
+                        postedDate,
+                        categoryForDb
+                    );
+
+                    if (alreadyExists && !shouldRetryExisting) {
+                        skippedCount++;
+                        continue;
+                    }
+
+                    // 🖼️ คัดลอกรูปภาพจาก Joomla
+                    const imageCopyResult = await copyImagesFromJoomla(rawDescription, postedDate);
+                    const summaryDescription = generateMigrationSummaryDescription({
+                        title: article.title,
+                        introtext: article.introtext,
+                        fulltext: article.fulltext,
+                        publishUp: article.publish_up
+                    });
+                    const finalDescription = useAiSummary === false || useAiSummary === 'false'
+                        ? imageCopyResult.updatedContent
+                        : summaryDescription;
+
+                    // 🖼️ คัดลอก Thumbnail
+                    let finalImageUrl = null;
+                    if (imageUrl) {
+                        finalImageUrl = await copyThumbnailFromJoomla(imageUrl, postedDate);
+                    }
+
+                    // 📎 ดึงและคัดลอกไฟล์แนบ
+                    const attachmentResult = await extractAndCopyAttachmentsFromJoomla(rawDescription, postedDate, {
+                        destinationMenu: 'budgettransfer'
+                    });
+                    let finalAttachmentUrl = attachmentResult.attachmentUrl || null;
+
+                    // ลำดับความสำคัญ attachment
+                    if (!finalAttachmentUrl && imageCopyResult.copiedImages && imageCopyResult.copiedImages.length > 1) {
+                        finalAttachmentUrl = imageCopyResult.copiedImages[imageCopyResult.copiedImages.length - 1].copied;
+                    } else if (!finalAttachmentUrl && finalImageUrl) {
+                        finalAttachmentUrl = finalImageUrl;
+                    }
+
+                    // เก็บสถิติการคัดลอก
+                    if (imageCopyResult.copiedImages.length > 0) {
+                        allCopiedImages.push({
+                            articleId: article.id,
+                            articleTitle: article.title,
+                            images: imageCopyResult.copiedImages
+                        });
+                    }
+                    if (imageCopyResult.errors.length > 0) {
+                        allImageErrors.push({
+                            articleId: article.id,
+                            articleTitle: article.title,
+                            errors: imageCopyResult.errors
+                        });
+                    }
+
+                    if (attachmentResult.copiedAttachments.length > 0) {
+                        allCopiedAttachments.push({
+                            articleId: article.id,
+                            articleTitle: article.title,
+                            attachments: attachmentResult.copiedAttachments
+                        });
+                    }
+                    if (attachmentResult.errors.length > 0) {
+                        allAttachmentErrors.push({
+                            articleId: article.id,
+                            articleTitle: article.title,
+                            errors: attachmentResult.errors
+                        });
+                    }
+                    
+                    if (existingBySource && shouldRetryExisting) {
+                        await BudgetTransfer.updateMigratedFields(
+                            existingBySource.id,
+                            finalDescription,
+                            finalImageUrl || existingBySource.image_url,
+                            finalAttachmentUrl || existingBySource.attachment_url
+                        );
+                        updatedCount++;
+                    } else {
+                        await BudgetTransfer.create(
+                            article.title,
+                            finalDescription,
+                            finalImageUrl,
+                            finalAttachmentUrl,
+                            categoryForDb,
+                            postedDate,
+                            1, // is_published
+                            `joomla:${article.id}`
+                        );
+
+                        successCount++;
+                    }
+                } catch (err) {
+                    errorCount++;
+                    errors.push({
+                        articleId: article.id,
+                        title: article.title,
+                        error: err.message
+                    });
+                    console.error(`Error migrating article ${article.id}:`, err);
+                }
+            }
+
+            const totalImagesCopied = allCopiedImages.reduce((sum, item) => sum + item.images.length, 0);
+            const totalImageErrors = allImageErrors.reduce((sum, item) => sum + item.errors.length, 0);
+            const totalAttachmentsCopied = allCopiedAttachments.reduce((sum, item) => sum + item.attachments.length, 0);
+            const totalAttachmentErrors = allAttachmentErrors.reduce((sum, item) => sum + item.errors.length, 0);
+
+            res.json({
+                success: true,
+                message: `Migration completed: ${successCount} created, ${updatedCount} updated, ${skippedCount} skipped, ${errorCount} errors | Images: ${totalImagesCopied} copied, ${totalImageErrors} errors | Attachments: ${totalAttachmentsCopied} copied, ${totalAttachmentErrors} errors`,
+                statistics: {
+                    totalProcessed: articlesToMigrate.length,
+                    successCount,
+                    updatedCount,
+                    skippedCount,
+                    errorCount,
+                    errors,
+                    destinationMenu,
+                    destinationCategory: resolveDestinationCategory(destinationMenu, categoryName),
+                    imagesCopied: totalImagesCopied,
+                    imageErrors: totalImageErrors,
+                    attachmentsCopied: totalAttachmentsCopied,
+                    attachmentErrors: totalAttachmentErrors
+                },
+                imageDetails: {
+                    copiedImages: allCopiedImages,
+                    imageErrors: allImageErrors
+                },
+                attachmentDetails: {
+                    copiedAttachments: allCopiedAttachments,
+                    attachmentErrors: allAttachmentErrors
+                }
+            });
+
+        } catch (error) {
+            console.error('Migration error:', error);
+            res.status(500).json({
+                success: false,
+                message: 'เกิดข้อผิดพลาดในการ migrate ข้อมูล',
+                error: error.message
+            });
+        }
+    },
+
+    // ========================================
+    // BUDGET TRANSFER CRUD
+    // ========================================
+
+    // ดึงรายการโอนงบประมาณทั้งหมด
+    getBudgetTransferList: async (req, res) => {
+        try {
+            let limitParam = req.query.limit || '30';
+            const searchQuery = (req.query.q || '').trim();
+            let limit = null;
+            
+            if (limitParam === 'all') {
+                limit = null;
+            } else {
+                limit = parseInt(limitParam, 10) || 30;
+            }
+            
+            const budgetTransfers = await BudgetTransfer.getAll(limit, 0, searchQuery);
+            const totalCount = await BudgetTransfer.getCount('all');
+            const filteredCount = await BudgetTransfer.countByTitle(searchQuery);
+            const publishedCount = await BudgetTransfer.getCount('published');
+            const draftCount = await BudgetTransfer.getCount('draft');
+            const featuredCount = await BudgetTransfer.getCount('featured');
+
+            const budgetTransfersForView = budgetTransfers.map((item) => ({
+                ...item,
+                image_preview_url: normalizeImageUrlForDisplay(item.image_url)
+            }));
+            
+            res.render('admin/budgettransfer-list', { 
+                title: 'จัดการการโอนงบประมาณรายจ่าย',
+                currentPage: 'budgettransfer',
+                budgetTransferList: budgetTransfersForView,
+                searchQuery,
+                currentLimit: limitParam === 'all' ? 'all' : parseInt(limitParam, 10) || 30,
+                statistics: {
+                    total: totalCount,
+                    filteredTotal: filteredCount,
+                    published: publishedCount,
+                    draft: draftCount,
+                    featured: featuredCount
+                }
+            });
+        } catch (error) {
+            console.error('Error fetching budget transfers:', error);
+            res.status(500).send('ไม่สามารถโหลดข้อมูลการโอนงบประมาณได้');
+        }
+    },
+
+    // หน้าเพิ่มการโอนงบประมาณใหม่
+    getBudgetTransferAddForm: async (req, res) => {
+        try {
+            res.render('admin/budgettransfer-add', { 
+                title: 'เพิ่มการโอนงบประมาณรายจ่ายใหม่',
+                currentPage: 'budgettransfer',
+                errorMessage: '',
+                formData: {}
+            });
+        } catch (error) {
+            res.status(500).send('ไม่สามารถโหลดข้อมูลได้');
+        }
+    },
+
+    // บันทึกการโอนงบประมาณใหม่
+    createBudgetTransfer: async (req, res) => {
+        try {
+            const { title, reference_number, category, description, date_posted, is_published, is_featured } = req.body;
+            const imageUrl = req.uploadedImage || '';
+            const attachmentUrl = req.uploadedAttachment || '';
+
+            if (!title) {
+                return res.status(400).render('admin/budgettransfer-add', {
+                    title: 'เพิ่มการโอนงบประมาณรายจ่ายใหม่',
+                    currentPage: 'budgettransfer',
+                    errorMessage: 'กรุณากรอกหัวข้อ/ชื่อรายการ',
+                    formData: req.body
+                });
+            }
+
+            const createdBy = 'Admin';
+            const transferDate = date_posted || new Date();
+            
+            await BudgetTransfer.create(
+                title,
+                description || '',
+                imageUrl,
+                attachmentUrl,
+                category || '',
+                transferDate,
+                is_published ? 1 : 0,
+                createdBy,
+                reference_number || ''
+            );
+
+            res.redirect('/admin/budgettransfer');
+        } catch (error) {
+            console.error('Error creating budget transfer:', error);
+            res.status(500).render('admin/budgettransfer-add', {
+                title: 'เพิ่มการโอนงบประมาณรายจ่ายใหม่',
+                currentPage: 'budgettransfer',
+                errorMessage: 'เกิดข้อผิดพลาดในการบันทึกข้อมูล',
+                formData: req.body
+            });
+        }
+    },
+
+    // หน้าแก้ไขการโอนงบประมาณ
+    getBudgetTransferEditForm: async (req, res) => {
+        try {
+            const id = req.params.id;
+            const budgetTransfer = await BudgetTransfer.getById(id);
+            
+            if (!budgetTransfer) {
+                return res.status(404).send('ไม่พบข้อมูลการโอนงบประมาณนี้');
+            }
+
+            const budgetTransferForView = {
+                ...budgetTransfer,
+                image_preview_url: normalizeImageUrlForDisplay(budgetTransfer.image_url)
+            };
+            
+            res.render('admin/budgettransfer-edit', { 
+                title: 'แก้ไขการโอนงบประมาณรายจ่าย',
+                currentPage: 'budgettransfer',
+                errorMessage: '',
+                budgetTransfer: budgetTransferForView
+            });
+        } catch (error) {
+            console.error('Error fetching budget transfer:', error);
+            res.status(500).send('ไม่สามารถโหลดข้อมูลได้');
+        }
+    },
+
+    // อัพเดทการโอนงบประมาณ
+    updateBudgetTransfer: async (req, res) => {
+        try {
+            const id = req.params.id;
+            const { title, reference_number, category, description, date_posted, is_published, is_featured } = req.body;
+            
+            const existingBudgetTransfer = await BudgetTransfer.getById(id);
+            if (!existingBudgetTransfer) {
+                return res.status(404).send('ไม่พบข้อมูลการโอนงบประมาณนี้');
+            }
+
+            if (!title) {
+                return res.status(400).render('admin/budgettransfer-edit', {
+                    title: 'แก้ไขการโอนงบประมาณรายจ่าย',
+                    currentPage: 'budgettransfer',
+                    errorMessage: 'กรุณากรอกหัวข้อ/ชื่อรายการ',
+                    budgetTransfer: { ...existingBudgetTransfer, ...req.body }
+                });
+            }
+
+            const imageUrl = req.uploadedImage || existingBudgetTransfer.image_url;
+            const attachmentUrl = req.uploadedAttachment || existingBudgetTransfer.attachment_url || '';
+            const transferDate = date_posted || existingBudgetTransfer.date_posted;
+
+            await BudgetTransfer.update(
+                id,
+                title,
+                description || '',
+                imageUrl,
+                attachmentUrl,
+                category || '',
+                transferDate,
+                is_published ? 1 : 0,
+                is_featured ? 1 : 0,
+                reference_number || ''
+            );
+
+            res.redirect('/admin/budgettransfer');
+        } catch (error) {
+            console.error('Error updating budget transfer:', error);
+            const id = req.params.id;
+            const existingBudgetTransfer = await BudgetTransfer.getById(id);
+            res.status(500).render('admin/budgettransfer-edit', {
+                title: 'แก้ไขการโอนงบประมาณรายจ่าย',
+                currentPage: 'budgettransfer',
+                errorMessage: 'เกิดข้อผิดพลาดในการอัพเดทข้อมูล',
+                budgetTransfer: existingBudgetTransfer
+            });
+        }
+    },
+
+    // ลบการโอนงบประมาณ
+    deleteBudgetTransfer: async (req, res) => {
+        try {
+            const id = req.params.id;
+            const budgetTransfer = await BudgetTransfer.getById(id);
+            
+            if (!budgetTransfer) {
+                return res.status(404).send('ไม่พบข้อมูลการโอนงบประมาณนี้');
+            }
+
+            // ลบไฟล์รูปภาพ
+            if (budgetTransfer.image_url) {
+                const destinationImagePath = resolveBudgetTransferImagePath(budgetTransfer.image_url);
+                if (destinationImagePath) {
+                    try {
+                        await fs.unlink(destinationImagePath);
+                        console.log(`Deleted budget transfer image: ${destinationImagePath}`);
+                    } catch (fileError) {
+                        console.warn(`Warning: Could not delete image for budget transfer ${id}:`, fileError);
+                    }
+                }
+            }
+
+            await BudgetTransfer.delete(id);
+            res.redirect('/admin/budgettransfer');
+        } catch (error) {
+            console.error('Error deleting budget transfer:', error);
+            res.status(500).send('ไม่สามารถลบข้อมูลได้');
+        }
+    },
+
+    // ลบการโอนงบประมาณหลายรายการ (AJAX)
+    deleteBudgetTransfersMultiple: async (req, res) => {
+        try {
+            const { ids } = req.body;
+
+            if (!ids || !Array.isArray(ids) || ids.length === 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'ต้องระบุ ID ของรายการที่ต้องการลบ'
+                });
+            }
+
+            let deletedCount = 0;
+            let errorCount = 0;
+            const errors = [];
+
+            for (const id of ids) {
+                try {
+                    const budgetTransfer = await BudgetTransfer.getById(id);
+                    if (!budgetTransfer) {
+                        errorCount++;
+                        errors.push({ id, error: 'ไม่พบข้อมูลนี้' });
+                        continue;
+                    }
+
+                    // ลบไฟล์รูปภาพ
+                    if (budgetTransfer.image_url) {
+                        const destinationImagePath = resolveBudgetTransferImagePath(budgetTransfer.image_url);
+                        if (destinationImagePath) {
+                            try {
+                                await fs.unlink(destinationImagePath);
+                                console.log(`Deleted budget transfer image: ${destinationImagePath}`);
+                            } catch (fileError) {
+                                console.warn(`Warning: Could not delete image for budget transfer ${id}:`, fileError);
+                            }
+                        }
+                    }
+
+                    await BudgetTransfer.delete(id);
+                    deletedCount++;
+                } catch (err) {
+                    errorCount++;
+                    errors.push({ id, error: err.message });
+                    console.error(`Error deleting budget transfer ${id}:`, err);
+                }
+            }
+
+            res.json({
+                success: true,
+                message: `ลบสำเร็จ ${deletedCount} รายการ${errorCount > 0 ? `, ล้มเหลว ${errorCount} รายการ` : ''}`,
+                deletedCount,
+                errorCount,
+                errors: errors.length > 0 ? errors : undefined
+            });
+        } catch (error) {
+            console.error('Error in deleteBudgetTransfersMultiple:', error);
+            res.status(500).json({
+                success: false,
+                message: 'เกิดข้อผิดพลาดในการลบข้อมูล',
+                error: error.message
+            });
+        }
+    },
+
+    // เปลี่ยนสถานะเผยแพร่
+    toggleBudgetTransferPublish: async (req, res) => {
+        try {
+            const id = req.params.id;
+            await BudgetTransfer.togglePublish(id);
+            res.redirect('/admin/budgettransfer');
+        } catch (error) {
+            console.error('Error toggling publish status:', error);
+            res.status(500).send('ไม่สามารถเปลี่ยนสถานะได้');
+        }
+    },
+
+    // เปลี่ยนสถานะปักหมุด
+    toggleBudgetTransferFeatured: async (req, res) => {
+        try {
+            const id = req.params.id;
+            await BudgetTransfer.toggleFeatured(id);
+            res.redirect('/admin/budgettransfer');
+        } catch (error) {
+            console.error('Error toggling featured status:', error);
+            res.status(500).send('ไม่สามารถเปลี่ยนสถานะได้');
+        }
     }
+
+    // Helper function to resolve budget transfer image path
+    // This prevents duplicating code by using the budget_transfer uploads path
+
+};
+
+// Helper function definitions outside the controller object
+const resolveBudgetTransferImagePath = (imageUrl) => {
+    if (!imageUrl) return null;
+    const cleanUrl = decodeURIComponent(String(imageUrl).split('#')[0].trim());
+    if (!cleanUrl) return null;
+
+    // If it's already an absolute URL, return as-is for deletion
+    if (/^https?:\/\//i.test(cleanUrl)) {
+        try {
+            const urlPath = new URL(cleanUrl).pathname;
+            const localPath = path.join(process.cwd(), 'public', urlPath.startsWith('/') ? urlPath.slice(1) : urlPath);
+            return localPath;
+        } catch (error) {
+            console.warn('Could not parse image URL:', cleanUrl);
+            return null;
+        }
+    }
+
+    // Otherwise treat as relative path
+    const relativePath = cleanUrl.startsWith('/') ? cleanUrl.slice(1) : cleanUrl;
+    return path.join(process.cwd(), 'public', relativePath);
 };
 
 module.exports = adminController;

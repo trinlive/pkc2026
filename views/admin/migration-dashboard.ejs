@@ -15,116 +15,224 @@
             0%, 100% { opacity: 1; }
             50% { opacity: .5; }
         }
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+        }
+        .badge {
+            display: inline-block;
+            padding: 0.35rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+        .badge-success {
+            background-color: #dcfce7;
+            color: #166534;
+        }
+        .badge-warning {
+            background-color: #fef3c7;
+            color: #9a3412;
+        }
+        .badge-info {
+            background-color: #dbeafe;
+            color: #0c4a6e;
+        }
     </style>
 </head>
-<body class="bg-gray-100">
+<body class="bg-gradient-to-br from-slate-50 to-blue-50 min-h-screen">
     <div class="flex min-h-screen">
         <!-- Sidebar -->
         <%- include('partials/sidebar', { currentPage: 'migration' }) %>
 
         <!-- Main Content -->
-        <main class="flex-1 p-8">
+        <main class="flex-1 p-6 md:p-8">
             <div class="max-w-7xl mx-auto">
-                <!-- Header -->
-                <div class="bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg shadow-md p-6 mb- text-white">
-                    <h2 class="text-3xl font-bold">🔄 Data Migration Center</h2>
-                    <p class="mt-2">ย้ายข้อมูลจาก Joomla Database มาที่ระบบใหม่</p>
+                <!-- Header with gradient background -->
+                <div class="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 rounded-xl shadow-lg p-8 mb-8 text-white relative overflow-hidden">
+                    <div class="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 rounded-full -mr-32 -mt-32"></div>
+                    <div class="relative z-10">
+                        <div class="flex items-center gap-3 mb-2">
+                            <span class="text-4xl">🔄</span>
+                            <h2 class="text-3xl md:text-4xl font-bold">Data Migration Center</h2>
+                        </div>
+                        <p class="text-blue-100 text-lg ml-1 mt-2">ย้ายข้อมูลจาก Joomla Database มาที่ระบบใหม่อย่างสมบูรณ์และรวดเร็ว</p>
+                    </div>
                 </div>
 
                 <!-- Database Status -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
                     <!-- Joomla DB Stats -->
-                    <div class="bg-white rounded-lg shadow-md p-6">
-                        <h3 class="text-xl font-bold text-gray-800 mb-4">
-                            📊 Joomla Database (เก่า)
-                        </h3>
+                    <div class="bg-white rounded-xl shadow-lg p-7 card-hover border-l-4 border-orange-500">
+                        <div class="flex items-center gap-3 mb-6">
+                            <span class="text-3xl">📊</span>
+                            <h3 class="text-2xl font-bold text-gray-800">Joomla Database</h3>
+                            <span class="badge badge-warning ml-auto">เก่า</span>
+                        </div>
                         <div class="space-y-3">
-                            <div class="flex justify-between items-center p-3 bg-blue-50 rounded">
-                                <span class="text-gray-700">Connection:</span>
-                                <span class="font-bold text-green-600">
+                            <div class="flex justify-between items-center p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg border border-blue-200">
+                                <span class="text-gray-700 font-medium">🔗 Connection:</span>
+                                <span class="font-bold <%= joomlaStats.status === 'connected' ? 'text-green-600' : 'text-red-600' %>">
                                     <%= joomlaStats.status === 'connected' ? '✓ Connected' : '✗ Disconnected' %>
                                 </span>
                             </div>
-                            <div class="flex justify-between items-center p-3 bg-gray-50 rounded">
-                                <span class="text-gray-700">Database:</span>
+                            <div class="flex justify-between items-center p-4 bg-gray-50 rounded-lg border border-gray-200">
+                                <span class="text-gray-700 font-medium">🗄️ Database:</span>
                                 <span class="font-bold text-gray-800"><%= joomlaStats.database %></span>
                             </div>
-                            <div class="flex justify-between items-center p-3 bg-yellow-50 rounded">
-                                <span class="text-gray-700">บทความ:</span>
-                                <span class="font-bold text-yellow-700"><%= joomlaStats.articles.toLocaleString() %> รายการ</span>
+                            <div class="flex justify-between items-center p-4 bg-gradient-to-br from-yellow-50 to-amber-100 rounded-lg border border-yellow-200">
+                                <span class="text-gray-700 font-medium">📄 บทความ:</span>
+                                <span class="font-bold text-yellow-700 text-lg"><%= joomlaStats.articles.toLocaleString() %> รายการ</span>
                             </div>
-                            <div class="flex justify-between items-center p-3 bg-purple-50 rounded">
-                                <span class="text-gray-700">หมวดหมู่:</span>
-                                <span class="font-bold text-purple-700"><%= joomlaStats.categories %> หมวด</span>
+                            <div class="flex justify-between items-center p-4 bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg border border-purple-200">
+                                <span class="text-gray-700 font-medium">📁 หมวดหมู่:</span>
+                                <span class="font-bold text-purple-700 text-lg"><%= joomlaStats.categories %> หมวด</span>
                             </div>
-                            <div class="flex justify-between items-center p-3 bg-green-50 rounded">
-                                <span class="text-gray-700">ผู้ใช้:</span>
-                                <span class="font-bold text-green-700"><%= joomlaStats.users %> คน</span>
+                            <div class="flex justify-between items-center p-4 bg-gradient-to-br from-green-50 to-emerald-100 rounded-lg border border-green-200">
+                                <span class="text-gray-700 font-medium">👥 ผู้ใช้:</span>
+                                <span class="font-bold text-green-700 text-lg"><%= joomlaStats.users %> คน</span>
                             </div>
                         </div>
                     </div>
 
                     <!-- Current System Stats -->
-                    <div class="bg-white rounded-lg shadow-md p-6">
-                        <h3 class="text-xl font-bold text-gray-800 mb-4">
-                            🎯 ระบบใหม่ (N-Pakkret)
-                        </h3>
+                    <div class="bg-white rounded-xl shadow-lg p-7 card-hover border-l-4 border-green-500">
+                        <div class="flex items-center gap-3 mb-6">
+                            <span class="text-3xl">🎯</span>
+                            <h3 class="text-2xl font-bold text-gray-800">ระบบใหม่ (N-Pakkret)</h3>
+                            <span class="badge badge-success ml-auto">ใหม่</span>
+                        </div>
                         <div class="space-y-3">
-                            <div class="flex justify-between items-center p-3 bg-blue-50 rounded">
-                                <span class="text-gray-700">Database:</span>
+                            <div class="flex justify-between items-center p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg border border-blue-200">
+                                <span class="text-gray-700 font-medium">🗄️ Database:</span>
                                 <span class="font-bold text-gray-800">pkc_nodeweb_db</span>
                             </div>
-                            <div class="flex justify-between items-center p-3 bg-orange-50 rounded">
-                                <span class="text-gray-700">ข่าวปัจจุบัน:</span>
-                                <span class="font-bold text-orange-700" id="currentNewsCount"><%= currentNewsCount %> รายการ</span>
+                            <div class="flex justify-between items-center p-4 bg-gradient-to-br from-orange-50 to-orange-100 rounded-lg border border-orange-200">
+                                <span class="text-gray-700 font-medium">📰 ข่าวปัจจุบัน:</span>
+                                <span class="font-bold text-orange-700 text-lg" id="currentNewsCount"><%= currentNewsCount %> รายการ</span>
                             </div>
-                            <div class="flex justify-between items-center p-3 bg-green-50 rounded">
-                                <span class="text-gray-700">สถานะระบบ:</span>
-                                <span class="font-bold text-green-600">✓ Online</span>
+                            <div class="flex justify-between items-center p-4 bg-gradient-to-br from-green-50 to-emerald-100 rounded-lg border border-green-200">
+                                <span class="text-gray-700 font-medium">🔋 สถานะระบบ:</span>
+                                <span class="font-bold text-green-600 flex items-center gap-2">
+                                    <span class="w-2 h-2 bg-green-600 rounded-full animate-pulse"></span>Online
+                                </span>
                             </div>
                         </div>
                     </div>
 
+
                     <!-- Instructions -->
-                    <div class="bg-blue-50 border-2 border-blue-200 rounded-lg shadow-md p-6">
-                        <h3 class="text-lg font-bold text-blue-800 mb-4">📖 วิธีการใช้งาน Migration</h3>
-                        <div class="space-y-3 text-sm text-gray-700">
-                            <p><strong>1️⃣ ขั้นตอนแรก:</strong> เลือกจำนวนรายการที่ต้องการ Migrate</p>
-                            <ul class="ml-4 space-y-1 text-gray-600">
-                                <li>• <strong>ครั้งแรก:</strong> ลอง 50 หรือ 100 รายการก่อน</li>
-                                <li>• <strong>ครั้งต่อไป:</strong> ถ้า Migrate สำเร็จแล้ว ให้เลือกจำนวนที่มากขึ้น เช่น 200, 300 ฯลฯ</li>
-                                <li>• 💡 ระบบจะ <strong>ข้ามรายการที่มีอยู่แล้ว</strong> โดยอัตโนมัติ</li>
-                            </ul>
-                            <p class="mt-3"><strong>2️⃣ ขั้นตอนที่สอง:</strong> กด "Preview รายการ" เพื่อตรวจสอบก่อน</p>
-                            <ul class="ml-4 space-y-1 text-gray-600">
-                                <li>• ระบบจะแสดง <span class="text-green-600 font-bold">จะเพิ่ม</span> (รายการใหม่) และ <span class="text-orange-600 font-bold">จะข้าม</span> (มีอยู่แล้ว)</li>
-                                <li>• ตรวจสอบให้ชัดเจนก่อน migrate</li>
-                            </ul>
-                            <p class="mt-3"><strong>3️⃣ ขั้นตอนที่สาม:</strong> กด "เริ่ม Migration" เพื่อ migrate จริง</p>
-                            <ul class="ml-4 space-y-1 text-gray-600">
-                                <li>• ระบบจะคัดลอกข้อมูล: <strong>ข่าว</strong>, <strong>รูปภาพ</strong>, <strong>ไฟล์แนบ (PDF/JPG)</strong></li>
-                                <li>• 📎 ไฟล์แนบจะถูกใส่ในช่อง "อ่านรายละเอียด" โดยอัตโนมัติ</li>
-                                <li>• ⏳ รอให้ migration สำเร็จ (ไม่ปิดเบราว์เซอร์)</li>
-                            </ul>
+                    <div class="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-300 rounded-xl shadow-lg p-8 lg:col-span-2 card-hover">
+                        <div class="flex items-center gap-3 mb-6">
+                            <span class="text-3xl">📖</span>
+                            <h3 class="text-2xl font-bold text-blue-900">วิธีการใช้งาน Migration</h3>
+                        </div>
+                        <div class="space-y-4">
+                            <!-- Step 1 -->
+                            <div class="bg-white rounded-lg p-5 border-l-4 border-blue-500 shadow-sm hover:shadow-md transition">
+                                <div class="flex items-start gap-4">
+                                    <div class="flex-shrink-0">
+                                        <div class="flex items-center justify-center h-8 w-8 rounded-full bg-blue-600 text-white font-bold text-sm">1</div>
+                                    </div>
+                                    <div class="flex-grow">
+                                        <h4 class="text-lg font-bold text-blue-900 mb-3">เลือกจำนวนรายการที่ต้องการ Migrate</h4>
+                                        <div class="bg-blue-50 rounded-lg p-4 space-y-2">
+                                            <div class="flex items-start gap-2">
+                                                <span class="text-blue-600 font-bold">•</span>
+                                                <span class="text-gray-700"><strong>ครั้งแรก:</strong> ลองเริ่มด้วย 50 หรือ 100 รายการก่อน เพื่อทดสอบว่าระบบทำงานถูกต้องหรือไม่</span>
+                                            </div>
+                                            <div class="flex items-start gap-2">
+                                                <span class="text-blue-600 font-bold">•</span>
+                                                <span class="text-gray-700"><strong>ครั้งต่อไป:</strong> ถ้า Migrate สำเร็จแล้ว ให้เลือกจำนวนที่มากขึ้น เช่น 200, 300, 500 ฯลฯ</span>
+                                            </div>
+                                            <div class="flex items-start gap-2">
+                                                <span class="text-blue-600 font-bold">💡</span>
+                                                <span class="text-gray-700">ระบบจะ<strong>ข้ามรายการที่มีอยู่แล้ว</strong>โดยอัตโนมัติ ไม่ต้องกังวล</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Step 2 -->
+                            <div class="bg-white rounded-lg p-5 border-l-4 border-indigo-500 shadow-sm hover:shadow-md transition">
+                                <div class="flex items-start gap-4">
+                                    <div class="flex-shrink-0">
+                                        <div class="flex items-center justify-center h-8 w-8 rounded-full bg-indigo-600 text-white font-bold text-sm">2</div>
+                                    </div>
+                                    <div class="flex-grow">
+                                        <h4 class="text-lg font-bold text-indigo-900 mb-3">กด "Preview รายการ" เพื่อตรวจสอบก่อน Migrateจริง</h4>
+                                        <div class="bg-indigo-50 rounded-lg p-4 space-y-2">
+                                            <div class="flex items-start gap-2">
+                                                <span class="text-indigo-600 font-bold">•</span>
+                                                <span class="text-gray-700">ระบบจะแสดง <span class="inline-block badge badge-success">จะเพิ่ม</span> (รายการใหม่) และ <span class="inline-block badge badge-warning">จะข้าม</span> (มีอยู่แล้ว)</span>
+                                            </div>
+                                            <div class="flex items-start gap-2">
+                                                <span class="text-indigo-600 font-bold">•</span>
+                                                <span class="text-gray-700">ตรวจสอบรายการให้ชัดเจน ดูจำนวนว่าตรงกับความคาดหวังหรือไม่</span>
+                                            </div>
+                                            <div class="flex items-start gap-2">
+                                                <span class="text-indigo-600 font-bold">💡</span>
+                                                <span class="text-gray-700">หากจำนวนไม่ถูกต้อง สามารถปรับ Limit หรือ Offset แล้ว Preview ใหม่ได้</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Step 3 -->
+                            <div class="bg-white rounded-lg p-5 border-l-4 border-purple-500 shadow-sm hover:shadow-md transition">
+                                <div class="flex items-start gap-4">
+                                    <div class="flex-shrink-0">
+                                        <div class="flex items-center justify-center h-8 w-8 rounded-full bg-purple-600 text-white font-bold text-sm">3</div>
+                                    </div>
+                                    <div class="flex-grow">
+                                        <h4 class="text-lg font-bold text-purple-900 mb-3">กด "เริ่ม Migration" เพื่อ Migrate ข้อมูลจริง</h4>
+                                        <div class="bg-purple-50 rounded-lg p-4 space-y-2">
+                                            <div class="flex items-start gap-2">
+                                                <span class="text-purple-600 font-bold">•</span>
+                                                <span class="text-gray-700">ระบบจะคัดลอกข้อมูล: <strong>ข่าว</strong>, <strong>รูปภาพ</strong>, <strong>ไฟล์แนบ (PDF/JPG)</strong></span>
+                                            </div>
+                                            <div class="flex items-start gap-2">
+                                                <span class="text-purple-600 font-bold">•</span>
+                                                <span class="text-gray-700">📎 ไฟล์แนบจะถูกใส่ในช่อง "อ่านรายละเอียด" โดยอัตโนมัติ</span>
+                                            </div>
+                                            <div class="flex items-start gap-2">
+                                                <span class="text-purple-600 font-bold">⏳</span>
+                                                <span class="text-gray-700">รอให้ migration สำเร็จ (ไม่ปิดเบราว์เซอร์) โดยถัวเฉลี่ยประมาณ 1-2 วินาทีต่อ 1 รายการ</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 <!-- Migration Tools -->
-                <div class="bg-white rounded-lg shadow-md p-6">
-                    <h3 class="text-xl font-bold text-gray-800 mb-4">🔧 เครื่องมือ Migration</h3>
+                <div class="bg-white rounded-xl shadow-lg p-8 mb-8">
+                    <div class="flex items-center gap-3 mb-7">
+                        <span class="text-3xl">🔧</span>
+                        <h3 class="text-2xl font-bold text-gray-800">เครื่องมือ Migration</h3>
+                    </div>
                     
                     <!-- Universal Migration Form -->
-                    <div class="border-2 border-blue-200 rounded-lg p-6 mb-4">
-                        <h4 class="text-lg font-bold text-blue-800 mb-4">📰 Migrate ข่าวประชาสัมพันธ์ / 🎯 จัดการข่าวกิจกรรม</h4>
+                    <div class="border-2 border-blue-300 rounded-xl p-8 mb-6 bg-gradient-to-br from-blue-50 to-white">
+                        <div class="flex items-center gap-3 mb-6">
+                            <span class="text-2xl">📰</span>
+                            <h4 class="text-xl font-bold text-blue-900">Migrate ข่าวประชาสัมพันธ์ / จัดการข่าวกิจกรรม</h4>
+                        </div>
                         
-                        <form id="migrationForm" class="space-y-4">
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <form id="migrationForm" class="space-y-6">
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">
-                                        หมวดหมู่จาก Joomla:
+                                    <label class="block text-sm font-bold text-gray-700 mb-3">
+                                        📁 หมวดหมู่จาก Joomla:
                                     </label>
-                                    <select name="categoryName" class="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none">
+                                    <select name="categoryName" class="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none bg-white hover:border-gray-400 transition">
                                         <option value="">-- ทั้งหมด --</option>
                                         <option value="ข่าวประชาสัมพันธ์ | News" selected>ข่าวประชาสัมพันธ์ | News</option>
                                         <% if (categories.length > 0) { %>
@@ -137,101 +245,123 @@
                                     </select>
                                 </div>
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">
-                                        ปลายทาง (Menu จัดการ):
+                                    <label class="block text-sm font-bold text-gray-700 mb-3">
+                                        🎯 ปลายทาง (Menu จัดการ):
                                     </label>
-                                    <select name="destinationMenu" class="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none">
+                                    <select name="destinationMenu" class="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none bg-white hover:border-gray-400 transition">
                                         <option value="news">📰 จัดการข่าวสาร → ข่าวประชาสัมพันธ์</option>
                                         <option value="activities">🎯 จัดการข่าวกิจกรรม</option>
+                                        <option value="budgettransfer">💰 การโอนงบประมาณรายจ่ายประจำปี</option>
                                     </select>
                                 </div>
-                                <div class="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-2">
-                                            จำนวนที่ต้องการ Migrate:
-                                        </label>
-                                        <input type="number" name="limit" value="10" min="1"
-                                               class="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none"
-                                               placeholder="เช่น 50, 100, 200 ฯลฯ">
-                                        <p class="text-xs text-gray-500 mt-1">
-                                            💡 จำนวนรายการที่ดึงมาตรวจสอบ
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-2">
-                                            ข้ามจากรายการที่ (Offset):
-                                        </label>
-                                        <input type="number" name="offset" value="0" min="0"
-                                               class="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none"
-                                               placeholder="0 = เริ่มจากต้น">
-                                        <p class="text-xs text-gray-500 mt-1">
-                                            💡 ตั้ง 50 เพื่อเริ่มจากรายการที่ 51
-                                        </p>
-                                    </div>
+                                <div>
+                                    <label class="block text-sm font-bold text-gray-700 mb-3">
+                                        📊 จำนวน Migrate:
+                                    </label>
+                                    <input type="number" name="limit" value="10" min="1"
+                                           class="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none hover:border-gray-400 transition"
+                                           placeholder="เช่น 50, 100, 200">
+                                    <p class="text-xs text-gray-500 mt-2">
+                                        💡 จำนวนรายการที่ดึงมาตรวจสอบ
+                                    </p>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-bold text-gray-700 mb-3">
+                                        ⏭️ Offset (ข้าม):
+                                    </label>
+                                    <input type="number" name="offset" value="0" min="0"
+                                           class="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none hover:border-gray-400 transition"
+                                           placeholder="0 = เริ่มจากต้น">
+                                    <p class="text-xs text-gray-500 mt-2">
+                                        💡 ตั้ง 50 เพื่อเริ่มจากรายการที่ 51
+                                    </p>
                                 </div>
                             </div>
 
-                            <div class="flex gap-4">
+                            <!-- Action Buttons -->
+                            <div class="flex flex-wrap gap-4 pt-4">
                                 <button type="button" id="previewBtn"
-                                        class="bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 px-8 rounded-lg transition shadow-md">
+                                        class="bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 px-6 rounded-lg transition shadow-md hover:shadow-lg flex items-center gap-2 flex-1 md:flex-none justify-center">
                                     👁️ Preview รายการ
                                 </button>
                                 <button type="submit" id="migrateBtn"
-                                        class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg transition shadow-md">
+                                        class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition shadow-md hover:shadow-lg flex items-center gap-2 flex-1 md:flex-none justify-center">
                                     🚀 เริ่ม Migration
                                 </button>
                                 <button type="button" id="retryMigrateBtn"
-                                        class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded-lg transition shadow-md">
+                                        class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition shadow-md hover:shadow-lg flex items-center gap-2 flex-1 md:flex-none justify-center">
                                     🔁 Re-Migrate Existing
                                 </button>
                                 <button type="button" id="cancelMigrateBtn"
-                                        class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-8 rounded-lg transition shadow-md opacity-50 cursor-not-allowed"
+                                        class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg transition shadow-md hover:shadow-lg flex items-center gap-2 flex-1 md:flex-none justify-center opacity-50 cursor-not-allowed"
                                         disabled>
                                     ⛔ หยุดงาน
                                 </button>
                                 <button type="button" id="viewItemsBtn"
-                                        class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-lg transition shadow-md">
+                                        class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg transition shadow-md hover:shadow-lg flex items-center gap-2 flex-1 md:flex-none justify-center">
                                     📋 ดูรายการข่าว
                                 </button>
                             </div>
                         </form>
 
                         <!-- Progress Display -->
-                        <div id="progressContainer" class="hidden mt-6">
-                            <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
-                                <p class="text-blue-800 font-semibold flex items-center">
-                                    <svg class="animate-spin h-5 w-5 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                    </svg>
-                                    กำลัง Migrate ข้อมูล...
-                                </p>
-                                <p id="progressText" class="text-sm text-gray-600 mt-2"></p>
-                                <div class="mt-3 bg-white/80 rounded-full h-3 overflow-hidden border border-blue-200">
-                                    <div id="progressBar" class="h-full bg-blue-600 transition-all duration-300" style="width: 0%"></div>
+                        <div id="progressContainer" class="hidden mt-8 bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-300 rounded-xl p-8 shadow-lg">
+                            <div class="flex items-center gap-3 mb-4">
+                                <svg class="animate-spin h-6 w-6 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                <p class="text-blue-800 font-bold text-lg">กำลัง Migrate ข้อมูล...</p>
+                            </div>
+                            <p id="progressText" class="text-sm text-gray-700 mb-4 font-medium"></p>
+                            <div class="mb-4">
+                                <div class="bg-white/80 rounded-full h-4 overflow-hidden border-2 border-blue-300 shadow-inner">
+                                    <div id="progressBar" class="h-full bg-gradient-to-r from-blue-500 to-indigo-500 transition-all duration-300" style="width: 0%"></div>
                                 </div>
-                                <div class="flex justify-between items-center mt-2 text-xs text-blue-700">
-                                    <span id="progressBatchText">Batch 0/0</span>
-                                    <span id="progressPercent">0%</span>
-                                </div>
+                            </div>
+                            <div class="flex justify-between items-center text-sm font-semibold text-gray-700">
+                                <span id="progressBatchText" class="bg-white px-3 py-1 rounded-full">Batch 0/0</span>
+                                <span id="progressPercent" class="bg-white px-3 py-1 rounded-full text-blue-600">0%</span>
                             </div>
                         </div>
 
                         <!-- Result Display -->
-                        <div id="previewContainer" class="hidden mt-6"></div>
-                        <div id="resultContainer" class="hidden mt-6"></div>
+                        <div id="previewContainer" class="hidden mt-8"></div>
+                        <div id="resultContainer" class="hidden mt-8"></div>
                     </div>
                 </div>
 
                 <!-- Help Section -->
-                <div class="bg-yellow-50 border-l-4 border-yellow-500 p-6 rounded-lg mt-6">
-                    <h4 class="font-bold text-yellow-800 mb-2">💡 วิธีใช้งาน:</h4>
-                    <ol class="list-decimal list-inside space-y-2 text-yellow-700">
-                        <li>เลือกหมวดหมู่ที่ต้องการ migrate (แนะนำ: ข่าวประชาสัมพันธ์ | News)</li>
-                        <li>ระบุจำนวนข่าวที่ต้องการ migrate (1-100 รายการ)</li>
-                        <li>กดปุ่ม "เริ่ม Migration" เพื่อเริ่มต้น</li>
-                        <li>รอระบบประมวลผล (ใช้เวลาประมาณ 1-2 วินาที/รายการ)</li>
-                        <li>เมื่อเสร็จแล้วสามารถกด "ดูรายการข่าว" เพื่อตรวจสอบผลลัพธ์</li>
+                <div class="bg-gradient-to-br from-amber-50 to-orange-50 border-l-4 border-amber-500 p-8 rounded-xl mt-8 shadow-md">
+                    <div class="flex items-center gap-3 mb-4">
+                        <span class="text-2xl">💡</span>
+                        <h4 class="font-bold text-amber-900 text-lg">ตัวอย่างการใช้งาน (Quick Guide)</h4>
+                    </div>
+                    <ol class="list-decimal list-inside space-y-3 text-amber-900 font-medium">
+                        <li class="flex items-start gap-3">
+                            <span>1.</span>
+                            <span>เลือกหมวดหมู่ที่ต้องการ migrate (แนะนำ: ข่าวประชาสัมพันธ์ | News)</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <span>2.</span>
+                            <span>ระบุจำนวนข่าวที่ต้องการ migrate เช่น 50, 100, 200 รายการ</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <span>3.</span>
+                            <span>กดปุ่ม "Preview รายการ" เพื่อตรวจสอบรายการก่อน (ไม่บังคับ แต่แนะนำ)</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <span>4.</span>
+                            <span>กดปุ่ม "เริ่ม Migration" เพื่อเริ่มต้นการ migrate จริง</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <span>5.</span>
+                            <span>รอระบบประมวลผล (ใช้เวลาประมาณ 1-2 วินาที/รายการ ไม่ปิดเบราว์เซอร์)</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <span>6.</span>
+                            <span>เมื่อเสร็จแล้วสามารถกด "ดูรายการข่าว" เพื่อตรวจสอบผลลัพธ์และทำการ Migrate ต่อได้</span>
+                        </li>
                     </ol>
                 </div>
             </div>
@@ -458,9 +588,12 @@
 
                 if (!result.success) {
                     resultContainer.innerHTML = `
-                        <div class="bg-red-50 border-l-4 border-red-500 p-6 rounded">
-                            <h5 class="font-bold text-red-800 text-lg mb-2">❌ Retry ล้มเหลว</h5>
-                            <p class="text-red-700">${result.message || 'ไม่สามารถ retry ได้'}</p>
+                        <div class="bg-gradient-to-br from-red-50 to-orange-50 border-2 border-red-400 rounded-xl p-8 shadow-lg">
+                            <div class="flex items-center gap-3 mb-4">
+                                <span class="text-3xl">❌</span>
+                                <h5 class="font-bold text-red-900 text-xl">Retry ล้มเหลว</h5>
+                            </div>
+                            <p class="text-red-700 font-medium">${result.message || 'ไม่สามารถ retry ได้'}</p>
                         </div>
                     `;
                     return;
@@ -471,35 +604,40 @@
                 const hasNewAttachmentErrors = result.attachmentDetails && result.attachmentDetails.attachmentErrors && result.attachmentDetails.attachmentErrors.length > 0;
 
                 resultContainer.innerHTML = `
-                    <div class="bg-green-50 border-l-4 border-green-500 p-6 rounded">
-                        <h5 class="font-bold text-green-800 text-lg mb-3">✅ Retry สำเร็จ!</h5>
-                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                            <div class="bg-white p-4 rounded shadow">
-                                <p class="text-sm text-gray-600">ประมวลผล:</p>
-                                <p class="text-2xl font-bold text-blue-600">${stats.totalProcessed || 0}</p>
+                    <div class="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-400 rounded-xl p-8 shadow-lg">
+                        <div class="flex items-center gap-3 mb-6">
+                            <span class="text-3xl animate-bounce">✅</span>
+                            <h5 class="font-bold text-green-900 text-xl">Retry สำเร็จ!</h5>
+                        </div>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                            <div class="bg-white rounded-lg p-5 border-2 border-blue-200 shadow-md text-center">
+                                <p class="text-xs text-gray-600 font-semibold">📊 ประมวลผล</p>
+                                <p class="text-2xl font-bold text-blue-600 mt-2">${stats.totalProcessed || 0}</p>
                             </div>
-                            <div class="bg-white p-4 rounded shadow">
-                                <p class="text-sm text-gray-600">อัปเดต:</p>
-                                <p class="text-2xl font-bold text-indigo-600">${stats.updatedCount || 0}</p>
+                            <div class="bg-white rounded-lg p-5 border-2 border-purple-200 shadow-md text-center">
+                                <p class="text-xs text-gray-600 font-semibold">🔄 อัปเดต</p>
+                                <p class="text-2xl font-bold text-purple-600 mt-2">${stats.updatedCount || 0}</p>
                             </div>
-                            <div class="bg-white p-4 rounded shadow">
-                                <p class="text-sm text-gray-600">รูปภาพ:</p>
-                                <p class="text-lg font-bold ${stats.imageErrors > 0 ? 'text-red-600' : 'text-green-600'}">
+                            <div class="bg-white rounded-lg p-5 border-2 border-green-200 shadow-md text-center">
+                                <p class="text-xs text-gray-600 font-semibold">🖼️ รูปภาพ</p>
+                                <p class="text-lg font-bold ${stats.imageErrors > 0 ? 'text-red-600' : 'text-green-600'} mt-2">
                                     ${stats.imagesCopied || 0} ✓ / ${stats.imageErrors || 0} ✗
                                 </p>
                             </div>
-                            <div class="bg-white p-4 rounded shadow">
-                                <p class="text-sm text-gray-600">ไฟล์แนบ:</p>
-                                <p class="text-lg font-bold ${stats.attachmentErrors > 0 ? 'text-red-600' : 'text-green-600'}">
+                            <div class="bg-white rounded-lg p-5 border-2 border-purple-200 shadow-md text-center">
+                                <p class="text-xs text-gray-600 font-semibold">📎 ไฟล์แนบ</p>
+                                <p class="text-lg font-bold ${stats.attachmentErrors > 0 ? 'text-red-600' : 'text-green-600'} mt-2">
                                     ${stats.attachmentsCopied || 0} ✓ / ${stats.attachmentErrors || 0} ✗
                                 </p>
                             </div>
                         </div>
-                        <p class="text-sm text-green-700">
-                            ${stats.imageErrors > 0 || stats.attachmentErrors > 0 ? 
-                                'ยังคงมีไฟล์ที่คัดลอกไม่สำเร็จ อาจเป็นเพราะไฟล์ไม่มีอยู่จริงในระบบ Joomla เดิม' : 
-                                'คัดลอกไฟล์ทั้งหมดสำเร็จ!'}
-                        </p>
+                        <div class="bg-white rounded-lg p-6 border-l-4 border-green-500">
+                            <p class="text-sm text-gray-700 font-medium">
+                                ${stats.imageErrors > 0 || stats.attachmentErrors > 0 ? 
+                                    '⚠️ ยังคงมีไฟล์ที่คัดลอกไม่สำเร็จ อาจเป็นเพราะไฟล์ไม่มีอยู่จริงในระบบ Joomla เดิม' : 
+                                    '🎉 คัดลอกไฟล์ทั้งหมดสำเร็จแล้ว!'}
+                            </p>
+                        </div>
                     </div>
 
                     ${hasNewImageErrors || hasNewAttachmentErrors ? generateFileErrorsSection({
@@ -514,10 +652,13 @@
                 progressContainer.classList.add('hidden');
                 resultContainer.classList.remove('hidden');
                 resultContainer.innerHTML = `
-                    <div class="bg-red-50 border-l-4 border-red-500 p-6 rounded">
-                        <h5 class="font-bold text-red-800 text-lg mb-2">❌ เกิดข้อผิดพลาด</h5>
-                        <p class="text-red-700">ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้</p>
-                        <p class="text-sm text-red-600 mt-2">${error.message}</p>
+                    <div class="bg-gradient-to-br from-red-50 to-orange-50 border-2 border-red-400 rounded-xl p-8 shadow-lg">
+                        <div class="flex items-center gap-3 mb-4">
+                            <span class="text-3xl">⚠️</span>
+                            <h5 class="font-bold text-red-900 text-xl">เกิดข้อผิดพลาด</h5>
+                        </div>
+                        <p class="text-red-700 font-medium mb-2">ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้</p>
+                        <p class="text-sm text-red-600 bg-white rounded p-3 mt-3 border border-red-200 font-mono">${error.message}</p>
                     </div>
                 `;
             } finally {
@@ -623,9 +764,12 @@
 
                 if (!result.success) {
                     previewContainer.innerHTML = `
-                        <div class="bg-red-50 border-l-4 border-red-500 p-6 rounded">
-                            <h5 class="font-bold text-red-800 text-lg mb-2">❌ Preview ล้มเหลว</h5>
-                            <p class="text-red-700">${result.message || 'ไม่สามารถ preview ได้'}</p>
+                        <div class="bg-gradient-to-br from-red-50 to-orange-50 border-2 border-red-400 rounded-xl p-8 shadow-lg">
+                            <div class="flex items-center gap-3 mb-4">
+                                <span class="text-3xl">❌</span>
+                                <h5 class="font-bold text-red-900 text-xl">Preview ล้มเหลว</h5>
+                            </div>
+                            <p class="text-red-700 font-medium">${result.message || 'ไม่สามารถ preview ได้'}</p>
                         </div>
                     `;
                     return;
@@ -639,34 +783,48 @@
                 `).join('');
 
                 previewContainer.innerHTML = `
-                    <div class="bg-amber-50 border-l-4 border-amber-500 p-6 rounded">
-                        <h5 class="font-bold text-amber-800 text-lg mb-3">👁️ Preview ก่อน Migration</h5>
-                        <p class="text-sm text-amber-700 mb-3">
-                            Source: <span class="font-semibold">${data.categoryName || 'ทั้งหมด'}</span>
-                            → Destination: <span class="font-semibold">${result.statistics.destinationCategory || '-'}</span>
-                        </p>
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                            <div class="bg-white p-4 rounded shadow">
-                                <p class="text-sm text-gray-600">ตรวจสอบ:</p>
-                                <p class="text-2xl font-bold text-blue-600">${result.statistics.totalChecked}</p>
+                    <div class="bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-400 rounded-xl p-8 shadow-lg">
+                        <div class="flex items-center gap-3 mb-6">
+                            <span class="text-3xl">👁️</span>
+                            <h5 class="font-bold text-amber-900 text-xl">Preview ก่อน Migration</h5>
+                        </div>
+                        <div class="mb-6 p-4 bg-white rounded-lg border-l-4 border-amber-500">
+                            <p class="text-sm text-gray-700">
+                                📁 Source: <span class="font-bold text-blue-700">${data.categoryName || 'ทั้งหมด'}</span>
+                                <span class="mx-2">→</span>
+                                🎯 Destination: <span class="font-bold text-green-700">${result.statistics.destinationCategory || '-'}</span>
+                            </p>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                            <div class="bg-white rounded-lg p-5 border-2 border-blue-200 shadow-md">
+                                <p class="text-sm text-gray-600 font-medium">📊 ตรวจสอบทั้งหมด:</p>
+                                <p class="text-3xl font-bold text-blue-600 mt-2">${result.statistics.totalChecked}</p>
                             </div>
-                            <div class="bg-white p-4 rounded shadow">
-                                <p class="text-sm text-gray-600">จะเพิ่ม:</p>
-                                <p class="text-2xl font-bold text-green-600">${result.statistics.willAddCount}</p>
+                            <div class="bg-white rounded-lg p-5 border-2 border-green-200 shadow-md">
+                                <p class="text-sm text-gray-600 font-medium">✅ จะเพิ่มใหม่:</p>
+                                <p class="text-3xl font-bold text-green-600 mt-2">${result.statistics.willAddCount}</p>
                             </div>
-                            <div class="bg-white p-4 rounded shadow">
-                                <p class="text-sm text-gray-600">จะข้าม (ซ้ำ):</p>
-                                <p class="text-2xl font-bold text-yellow-600">${result.statistics.willSkipCount}</p>
+                            <div class="bg-white rounded-lg p-5 border-2 border-yellow-200 shadow-md">
+                                <p class="text-sm text-gray-600 font-medium">⏭️ จะข้าม (ซ้ำ):</p>
+                                <p class="text-3xl font-bold text-yellow-600 mt-2">${result.statistics.willSkipCount}</p>
                             </div>
                         </div>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div class="bg-white p-4 rounded shadow">
-                                <p class="font-semibold text-green-800 mb-2">ตัวอย่างรายการที่จะเพิ่ม (สูงสุด 5):</p>
-                                <ul class="space-y-1">${willAddRows || '<li class="text-sm text-gray-500">ไม่มีรายการ</li>'}</ul>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div class="bg-gradient-to-br from-green-50 to-emerald-50 p-6 rounded-lg border-2 border-green-200 shadow-md">
+                                <p class="font-bold text-green-900 mb-4 flex items-center gap-2">
+                                    <span class="text-xl">✅</span>
+                                    <span>รายการที่จะเพิ่ม</span>
+                                    <span class="ml-auto bg-green-200 px-3 py-1 rounded-full text-sm font-bold text-green-700">${result.statistics.willAddCount}</span>
+                                </p>
+                                <ul class="space-y-2">${willAddRows || '<li class="text-sm text-gray-500 italic">ไม่มีรายการที่จะเพิ่ม</li>'}</ul>
                             </div>
-                            <div class="bg-white p-4 rounded shadow">
-                                <p class="font-semibold text-yellow-800 mb-2">ตัวอย่างรายการที่จะข้าม (สูงสุด 5):</p>
-                                <ul class="space-y-1">${willSkipRows || '<li class="text-sm text-gray-500">ไม่มีรายการ</li>'}</ul>
+                            <div class="bg-gradient-to-br from-yellow-50 to-orange-50 p-6 rounded-lg border-2 border-yellow-200 shadow-md">
+                                <p class="font-bold text-yellow-900 mb-4 flex items-center gap-2">
+                                    <span class="text-xl">⏭️</span>
+                                    <span>รายการที่จะข้าม (ซ้ำ)</span>
+                                    <span class="ml-auto bg-yellow-200 px-3 py-1 rounded-full text-sm font-bold text-yellow-700">${result.statistics.willSkipCount}</span>
+                                </p>
+                                <ul class="space-y-2">${willSkipRows || '<li class="text-sm text-gray-500 italic">ไม่มีรายการที่ซ้ำ</li>'}</ul>
                             </div>
                         </div>
                     </div>
@@ -675,10 +833,13 @@
                 progressContainer.classList.add('hidden');
                 previewContainer.classList.remove('hidden');
                 previewContainer.innerHTML = `
-                    <div class="bg-red-50 border-l-4 border-red-500 p-6 rounded">
-                        <h5 class="font-bold text-red-800 text-lg mb-2">❌ เกิดข้อผิดพลาด</h5>
-                        <p class="text-red-700">ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้</p>
-                        <p class="text-sm text-red-600 mt-2">${error.message}</p>
+                    <div class="bg-gradient-to-br from-red-50 to-orange-50 border-2 border-red-400 rounded-xl p-8 shadow-lg">
+                        <div class="flex items-center gap-3 mb-4">
+                            <span class="text-3xl">⚠️</span>
+                            <h5 class="font-bold text-red-900 text-xl">เกิดข้อผิดพลาด</h5>
+                        </div>
+                        <p class="text-red-700 font-medium mb-2">ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้</p>
+                        <p class="text-sm text-red-600 bg-white rounded p-3 mt-3 border border-red-200 font-mono">${error.message}</p>
                     </div>
                 `;
             } finally {
@@ -701,9 +862,12 @@
             if (totalLimit <= 0) {
                 resultContainer.classList.remove('hidden');
                 resultContainer.innerHTML = `
-                    <div class="bg-red-50 border-l-4 border-red-500 p-6 rounded">
-                        <h5 class="font-bold text-red-800 text-lg mb-2">❌ ข้อมูลไม่ถูกต้อง</h5>
-                        <p class="text-red-700">กรุณาระบุจำนวนที่ต้องการ Migrate มากกว่า 0</p>
+                    <div class="bg-gradient-to-br from-red-50 to-orange-50 border-2 border-red-400 rounded-xl p-8 shadow-lg">
+                        <div class="flex items-center gap-3 mb-4">
+                            <span class="text-3xl">⚠️</span>
+                            <h5 class="font-bold text-red-900 text-xl">ข้อมูลไม่ถูกต้อง</h5>
+                        </div>
+                        <p class="text-red-700 font-medium">กรุณาระบุจำนวนที่ต้องการ Migrate มากกว่า 0</p>
                     </div>
                 `;
                 shouldRetryExisting = false;
@@ -819,28 +983,35 @@
 
                 if (cancelRequested) {
                     resultContainer.innerHTML = `
-                        <div class="bg-yellow-50 border-l-4 border-yellow-500 p-6 rounded">
-                            <h5 class="font-bold text-yellow-800 text-lg mb-3">⏹️ หยุดงานแล้ว</h5>
-                            <p class="text-yellow-700 mb-3">ระบบหยุดหลังจบ Batch ปัจจุบันเรียบร้อย</p>
-                            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                                <div class="bg-white p-4 rounded shadow">
-                                    <p class="text-sm text-gray-600">ทำแล้ว:</p>
-                                    <p class="text-2xl font-bold text-blue-600">${processedItems}/${totalLimit}</p>
+                        <div class="bg-gradient-to-br from-yellow-50 to-orange-50 border-2 border-yellow-400 rounded-xl p-8 shadow-lg">
+                            <div class="flex items-center gap-3 mb-4">
+                                <span class="text-3xl">⏹️</span>
+                                <h5 class="font-bold text-yellow-900 text-xl">หยุดงานแล้ว</h5>
+                            </div>
+                            <p class="text-yellow-700 mb-6 font-medium">ระบบหยุดหลังจบ Batch ปัจจุบันเรียบร้อยแล้ว</p>
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                                <div class="bg-white rounded-lg p-5 border-2 border-blue-200 shadow-md text-center">
+                                    <p class="text-sm text-gray-600 font-medium">ประมวลแล้ว</p>
+                                    <p class="text-2xl font-bold text-blue-600 mt-2">${processedItems}/${totalLimit}</p>
                                 </div>
-                                <div class="bg-white p-4 rounded shadow">
-                                    <p class="text-sm text-gray-600">Batch:</p>
-                                    <p class="text-2xl font-bold text-indigo-600">${completedBatches}/${totalBatches}</p>
+                                <div class="bg-white rounded-lg p-5 border-2 border-indigo-200 shadow-md text-center">
+                                    <p class="text-sm text-gray-600 font-medium">Batch</p>
+                                    <p class="text-2xl font-bold text-indigo-600 mt-2">${completedBatches}/${totalBatches}</p>
                                 </div>
-                                <div class="bg-white p-4 rounded shadow">
-                                    <p class="text-sm text-gray-600">เพิ่มใหม่:</p>
-                                    <p class="text-2xl font-bold text-green-600">${aggregate.successCount}</p>
+                                <div class="bg-white rounded-lg p-5 border-2 border-green-200 shadow-md text-center">
+                                    <p class="text-sm text-gray-600 font-medium">เพิ่มใหม่</p>
+                                    <p class="text-2xl font-bold text-green-600 mt-2">${aggregate.successCount}</p>
                                 </div>
-                                <div class="bg-white p-4 rounded shadow">
-                                    <p class="text-sm text-gray-600">อัปเดต:</p>
-                                    <p class="text-2xl font-bold text-indigo-600">${aggregate.updatedCount || 0}</p>
+                                <div class="bg-white rounded-lg p-5 border-2 border-purple-200 shadow-md text-center">
+                                    <p class="text-sm text-gray-600 font-medium">อัปเดต</p>
+                                    <p class="text-2xl font-bold text-purple-600 mt-2">${aggregate.updatedCount || 0}</p>
                                 </div>
                             </div>
-                            <p class="text-sm text-yellow-700">สามารถกดเริ่มใหม่ต่อจาก offset เดิมหรือ offset ถัดไปได้ทันที</p>
+                            <div class="bg-white rounded-lg p-6 border-l-4 border-yellow-500">
+                                <p class="text-sm text-gray-700 font-medium">
+                                    💡 คุณสามารถใช้ Offset เดิมเพื่อเดินต่อจากที่หยุด หรือเปลี่ยน Offset เพื่อ Migrate รายการอื่นที่ยังไม่ได้ migrate ได้ทันที
+                                </p>
+                            </div>
                         </div>
                     `;
 
@@ -850,67 +1021,87 @@
                 }
 
                 resultContainer.innerHTML = `
-                        <div class="bg-green-50 border-l-4 border-green-500 p-6 rounded">
-                            <h5 class="font-bold text-green-800 text-lg mb-3">✅ Batch Migration สำเร็จ!</h5>
-                            <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-4">
-                                <div class="bg-white p-4 rounded shadow">
-                                    <p class="text-sm text-gray-600">ประมวลผล:</p>
-                                    <p class="text-2xl font-bold text-blue-600">${aggregate.totalProcessed}</p>
+                        <div class="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-400 rounded-xl p-8 shadow-lg">
+                            <div class="flex items-center gap-3 mb-6">
+                                <span class="text-3xl animate-bounce">✅</span>
+                                <h5 class="font-bold text-green-900 text-xl">Batch Migration สำเร็จ!</h5>
+                            </div>
+                            <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+                                <div class="bg-white rounded-lg p-5 border-2 border-blue-200 shadow-md text-center">
+                                    <p class="text-xs text-gray-600 font-semibold">📊 ประมวลผล</p>
+                                    <p class="text-2xl font-bold text-blue-600 mt-2">${aggregate.totalProcessed}</p>
                                 </div>
-                                <div class="bg-white p-4 rounded shadow">
-                                    <p class="text-sm text-gray-600">เพิ่มใหม่:</p>
-                                    <p class="text-2xl font-bold text-green-600">${aggregate.successCount}</p>
+                                <div class="bg-white rounded-lg p-5 border-2 border-green-200 shadow-md text-center">
+                                    <p class="text-xs text-gray-600 font-semibold">✨ เพิ่มใหม่</p>
+                                    <p class="text-2xl font-bold text-green-600 mt-2">${aggregate.successCount}</p>
                                 </div>
-                                <div class="bg-white p-4 rounded shadow">
-                                    <p class="text-sm text-gray-600">อัปเดต:</p>
-                                    <p class="text-2xl font-bold text-indigo-600">${aggregate.updatedCount || 0}</p>
+                                <div class="bg-white rounded-lg p-5 border-2 border-purple-200 shadow-md text-center">
+                                    <p class="text-xs text-gray-600 font-semibold">🔄 อัปเดต</p>
+                                    <p class="text-2xl font-bold text-purple-600 mt-2">${aggregate.updatedCount || 0}</p>
                                 </div>
-                                <div class="bg-white p-4 rounded shadow">
-                                    <p class="text-sm text-gray-600">ข้าม (ซ้ำ):</p>
-                                    <p class="text-2xl font-bold text-yellow-600">${aggregate.skippedCount || 0}</p>
+                                <div class="bg-white rounded-lg p-5 border-2 border-yellow-200 shadow-md text-center">
+                                    <p class="text-xs text-gray-600 font-semibold">⏭️ ข้าม (ซ้ำ)</p>
+                                    <p class="text-2xl font-bold text-yellow-600 mt-2">${aggregate.skippedCount || 0}</p>
                                 </div>
-                                <div class="bg-white p-4 rounded shadow">
-                                    <p class="text-sm text-gray-600">ผิดพลาด:</p>
-                                    <p class="text-2xl font-bold text-red-600">${aggregate.errorCount}</p>
+                                <div class="bg-white rounded-lg p-5 border-2 border-red-200 shadow-md text-center">
+                                    <p class="text-xs text-gray-600 font-semibold">⚠️ ผิดพลาด</p>
+                                    <p class="text-2xl font-bold text-red-600 mt-2">${aggregate.errorCount}</p>
                                 </div>
                             </div>
                             
                             <!-- 📊 สถิติไฟล์ที่คัดลอก -->
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                <div class="bg-blue-50 border-2 border-blue-200 p-4 rounded-lg">
-                                    <h6 class="font-bold text-blue-800 mb-2">🖼️ รูปภาพ</h6>
-                                    <div class="flex justify-between items-center">
-                                        <span class="text-sm text-blue-700">คัดลอกสำเร็จ:</span>
-                                        <span class="text-xl font-bold text-green-600">${aggregate.imagesCopied || 0} ไฟล์</span>
-                                    </div>
-                                    <div class="flex justify-between items-center mt-1">
-                                        <span class="text-sm text-blue-700">ผิดพลาด:</span>
-                                        <span class="text-xl font-bold text-red-600">${aggregate.imageErrors || 0} ไฟล์</span>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                                <div class="bg-blue-50 border-2 border-blue-300 p-6 rounded-lg">
+                                    <h6 class="font-bold text-blue-900 mb-4 flex items-center gap-2">
+                                        <span class="text-xl">🖼️</span>
+                                        <span>รูปภาพ</span>
+                                    </h6>
+                                    <div class="space-y-3">
+                                        <div class="flex justify-between items-center p-3 bg-white rounded-lg border border-blue-200">
+                                            <span class="text-sm text-blue-800 font-medium">คัดลอกสำเร็จ:</span>
+                                            <span class="text-lg font-bold text-green-600">${aggregate.imagesCopied || 0} ไฟล์</span>
+                                        </div>
+                                        <div class="flex justify-between items-center p-3 bg-white rounded-lg border border-red-200">
+                                            <span class="text-sm text-red-800 font-medium">ผิดพลาด:</span>
+                                            <span class="text-lg font-bold text-red-600">${aggregate.imageErrors || 0} ไฟล์</span>
+                                        </div>
                                     </div>
                                 </div>
-                                <div class="bg-purple-50 border-2 border-purple-200 p-4 rounded-lg">
-                                    <h6 class="font-bold text-purple-800 mb-2">📎 ไฟล์แนบ (PDF/JPG)</h6>
-                                    <div class="flex justify-between items-center">
-                                        <span class="text-sm text-purple-700">คัดลอกสำเร็จ:</span>
-                                        <span class="text-xl font-bold text-green-600">${aggregate.attachmentsCopied || 0} ไฟล์</span>
-                                    </div>
-                                    <div class="flex justify-between items-center mt-1">
-                                        <span class="text-sm text-purple-700">ผิดพลาด:</span>
-                                        <span class="text-xl font-bold text-red-600">${aggregate.attachmentErrors || 0} ไฟล์</span>
+                                <div class="bg-purple-50 border-2 border-purple-300 p-6 rounded-lg">
+                                    <h6 class="font-bold text-purple-900 mb-4 flex items-center gap-2">
+                                        <span class="text-xl">📎</span>
+                                        <span>ไฟล์แนบ (PDF/JPG)</span>
+                                    </h6>
+                                    <div class="space-y-3">
+                                        <div class="flex justify-between items-center p-3 bg-white rounded-lg border border-green-200">
+                                            <span class="text-sm text-purple-800 font-medium">คัดลอกสำเร็จ:</span>
+                                            <span class="text-lg font-bold text-green-600">${aggregate.attachmentsCopied || 0} ไฟล์</span>
+                                        </div>
+                                        <div class="flex justify-between items-center p-3 bg-white rounded-lg border border-red-200">
+                                            <span class="text-sm text-red-800 font-medium">ผิดพลาด:</span>
+                                            <span class="text-lg font-bold text-red-600">${aggregate.attachmentErrors || 0} ไฟล์</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
 
-                            <p class="text-sm text-green-700 mb-2">
-                                Destination: <span class="font-semibold">${aggregate.destinationCategory || '-'}</span>
-                            </p>
-                            <p class="text-green-700">Batch migration completed: ${aggregate.successCount} created, ${aggregate.updatedCount} updated, ${aggregate.skippedCount} skipped, ${aggregate.errorCount} errors | Images: ${aggregate.imagesCopied} copied, ${aggregate.imageErrors} errors | Attachments: ${aggregate.attachmentsCopied} copied, ${aggregate.attachmentErrors} errors</p>
+                            <div class="bg-white rounded-lg p-6 border-l-4 border-green-500">
+                                <p class="text-sm text-gray-700 mb-2">
+                                    🎯 <strong>Destination:</strong> <span class="font-semibold text-green-700">${aggregate.destinationCategory || '-'}</span>
+                                </p>
+                                <p class="text-sm text-gray-600 font-medium">
+                                    Batch migration completed: <span class="text-green-600">${aggregate.successCount} created</span>, <span class="text-purple-600">${aggregate.updatedCount} updated</span>, <span class="text-yellow-600">${aggregate.skippedCount} skipped</span>, <span class="text-red-600">${aggregate.errorCount} errors</span>
+                                </p>
+                            </div>
                             ${aggregate.errors.length > 0 ? `
-                                <div class="mt-4">
-                                    <p class="font-semibold text-red-700 mb-2">รายการที่มีข้อผิดพลาด:</p>
-                                    <ul class="list-disc list-inside text-sm text-red-600 space-y-1">
+                                <div class="mt-6 bg-red-50 border-2 border-red-200 rounded-lg p-6">
+                                    <h6 class="font-bold text-red-900 mb-4 flex items-center gap-2">
+                                        <span class="text-xl">⚠️</span>
+                                        <span>รายการที่มีข้อผิดพลาด</span>
+                                    </h6>
+                                    <ul class="list-disc list-inside text-sm text-red-700 space-y-1 max-h-48 overflow-y-auto">
                                         ${aggregate.errors.map(err => `
-                                            <li>${err.title}: ${err.error}</li>
+                                            <li class="font-medium">${err.title}: <span class="text-red-600">${err.error}</span></li>
                                         `).join('')}
                                     </ul>
                                 </div>
@@ -927,10 +1118,13 @@
                 progressContainer.classList.add('hidden');
                 resultContainer.classList.remove('hidden');
                 resultContainer.innerHTML = `
-                    <div class="bg-red-50 border-l-4 border-red-500 p-6 rounded">
-                        <h5 class="font-bold text-red-800 text-lg mb-2">❌ เกิดข้อผิดพลาด</h5>
-                        <p class="text-red-700">ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้</p>
-                        <p class="text-sm text-red-600 mt-2">${error.message}</p>
+                    <div class="bg-gradient-to-br from-red-50 to-orange-50 border-2 border-red-400 rounded-xl p-8 shadow-lg">
+                        <div class="flex items-center gap-3 mb-4">
+                            <span class="text-3xl">⚠️</span>
+                            <h5 class="font-bold text-red-900 text-xl">เกิดข้อผิดพลาด</h5>
+                        </div>
+                        <p class="text-red-700 font-medium mb-2">ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้</p>
+                        <p class="text-sm text-red-600 bg-white rounded p-3 mt-3 border border-red-200 font-mono">${error.message}</p>
                     </div>
                 `;
             } finally {

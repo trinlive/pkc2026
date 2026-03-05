@@ -2,6 +2,7 @@ const Post = require('../models/postModel');
 const Slider = require('../models/sliderModel');
 const News = require('../models/newsModel');
 const Activity = require('../models/activityModel');
+const BudgetTransfer = require('../models/budgetTransferModel');
 
 const cleanImageUrl = (imageUrl) => {
     if (!imageUrl) return null;
@@ -172,6 +173,56 @@ exports.getActivitiesListPage = async (req, res) => {
             currentPage: 1,
             totalPages: 1,
             totalActivities: 0,
+            searchQuery: ''
+        });
+    }
+};
+
+// หน้าดูการโอนงบประมาณรายจ่ายทั้งหมด
+exports.getBudgetTransferListPage = async (req, res) => {
+    try {
+        const page = parseInt(req.query.page, 10) || 1;
+        const searchQuery = (req.query.q || '').trim();
+        const limit = 9;
+        const offset = (page - 1) * limit;
+
+        let budgetTransfers, allBudgetTransfers, totalBudgetTransfers, totalPages;
+
+        if (searchQuery) {
+            // ค้นหาข้อมูลการโอนงบประมาณที่ตรงกับคำค้นหา
+            budgetTransfers = await BudgetTransfer.searchPublished(searchQuery, limit, offset);
+            allBudgetTransfers = await BudgetTransfer.searchPublished(searchQuery);
+            totalBudgetTransfers = allBudgetTransfers.length;
+            totalPages = Math.ceil(totalBudgetTransfers / limit) || 1;
+        } else {
+            // แสดงข้อมูลทั้งหมด
+            budgetTransfers = await BudgetTransfer.getPublished(limit, offset);
+            allBudgetTransfers = await BudgetTransfer.getPublished();
+            totalBudgetTransfers = allBudgetTransfers.length;
+            totalPages = Math.ceil(totalBudgetTransfers / limit) || 1;
+        }
+
+        const budgetTransfersForView = budgetTransfers.map((item) => ({
+            ...item,
+            image_preview_url: normalizeImageUrlForDisplay(item.image_url)
+        }));
+
+        res.render('home/budgettransfer', {
+            title: 'การโอนงบประมาณรายจ่ายประจำปี | เทศบาลนครปากเกร็ด',
+            budgetTransferList: budgetTransfersForView,
+            currentPage: page,
+            totalPages,
+            totalBudgetTransfers,
+            searchQuery
+        });
+    } catch (error) {
+        console.error('Error fetching budget transfer list:', error);
+        res.render('home/budgettransfer', {
+            title: 'Error',
+            budgetTransferList: [],
+            currentPage: 1,
+            totalPages: 1,
+            totalBudgetTransfers: 0,
             searchQuery: ''
         });
     }
